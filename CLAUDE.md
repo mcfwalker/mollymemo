@@ -6,6 +6,8 @@ Personal knowledge capture system. Share links from phone → auto-extract intel
 
 **v0.1** — In development
 
+**Production:** https://lazylist.mcfw.io
+
 ## Stack
 
 - **Frontend/API:** Next.js on Vercel

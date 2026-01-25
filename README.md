@@ -64,7 +64,7 @@ Connect the repo to Vercel and add the same environment variables.
 1. Create new Shortcut
 2. Add "Receive input from Share Sheet" (URLs)
 3. Add "Get Contents of URL" action:
-   - URL: `https://your-app.vercel.app/api/capture`
+   - URL: `https://lazylist.mcfw.io/api/capture`
    - Method: POST
    - Headers: `Authorization: Bearer YOUR_API_SECRET_KEY`
    - Body: JSON `{"url": "[Shortcut Input]"}`
@@ -77,7 +77,7 @@ Connect the repo to Vercel and add the same environment variables.
 Capture a new URL.
 
 ```bash
-curl -X POST https://your-app.vercel.app/api/capture \
+curl -X POST https://lazylist.mcfw.io/api/capture \
   -H "Authorization: Bearer YOUR_API_SECRET_KEY" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://github.com/user/repo"}'
