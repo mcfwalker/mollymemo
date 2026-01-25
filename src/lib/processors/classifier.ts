@@ -1,4 +1,4 @@
-// AI classifier using Gemini
+// AI classifier using OpenAI GPT-4o mini
 
 interface ClassificationResult {
   title: string
@@ -18,9 +18,9 @@ export async function classify(content: {
   }
   pageContent?: string
 }): Promise<ClassificationResult | null> {
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
-    console.error('GEMINI_API_KEY not configured')
+    console.error('OPENAI_API_KEY not configured')
     return null
   }
 
@@ -60,31 +60,31 @@ Return a JSON object with:
 Return ONLY valid JSON, no markdown or explanation.`
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 500,
-          },
-        }),
-      }
-    )
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.2,
+        max_tokens: 500,
+      }),
+    })
 
     if (!response.ok) {
-      console.error(`Gemini API error: ${response.status}`)
+      const error = await response.text()
+      console.error(`OpenAI API error: ${response.status}`, error)
       return null
     }
 
     const data = await response.json()
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+    const text = data.choices?.[0]?.message?.content
 
     if (!text) {
-      console.error('No response from Gemini')
+      console.error('No response from OpenAI')
       return null
     }
 
