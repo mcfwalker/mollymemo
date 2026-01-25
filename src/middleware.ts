@@ -89,7 +89,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization)
      * - favicon.ico
+     * - Static assets (fonts, videos, images)
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|fonts/|.*\\.mp4$|.*\\.webm$|.*\\.woff2?$|.*\\.png$|.*\\.jpg$|.*\\.svg$).*)',
   ],
 }
