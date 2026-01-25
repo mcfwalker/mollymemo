@@ -151,8 +151,7 @@ export default function LoginPage() {
           muted
           playsInline
         >
-          <source src="/lazy_list_vid1.mp4" type="video/mp4" />
-          <source src="/lazy_list_vid1.webm" type="video/webm" />
+          <source src="/lazy_list_vid2.mp4" type="video/mp4" />
         </video>
 
         <div className={styles.content}>
