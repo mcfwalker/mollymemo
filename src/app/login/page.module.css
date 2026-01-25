@@ -32,7 +32,7 @@
   justify-content: center;
   font-family: 'Mamoth', sans-serif;
   font-size: 64px;
-  color: var(--foreground);
+  color: #000000;
   user-select: none;
 }
 

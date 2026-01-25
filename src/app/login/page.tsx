@@ -35,15 +35,19 @@ function FloatingLetter({
       className={styles.letter}
       animate={{
         y: [0, -8, 0],
-      }}
-      style={{
-        color: isColorful ? LETTER_COLORS[index] : undefined,
+        color: isColorful ? LETTER_COLORS[index] : '#000000',
       }}
       transition={{
-        duration: 2,
-        repeat: Infinity,
-        ease: "easeInOut",
-        delay: index * 0.15,
+        y: {
+          duration: 2,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: index * 0.15,
+        },
+        color: {
+          duration: 0.5,
+          ease: "easeInOut",
+        }
       }}
     >
       {letter === ' ' ? '\u00A0' : letter}
