@@ -36,23 +36,27 @@ export async function processItem(itemId: string): Promise<void> {
     // Process based on source type
     if (sourceType === 'tiktok') {
       const result = await processTikTok(item.source_url)
-      if (result) {
-        transcript = result.transcript
+      if (!result || !result.transcript) {
+        throw new Error('TikTok transcription failed - no transcript returned')
+      }
+      transcript = result.transcript
 
-        // Process any GitHub URLs found in the transcript
-        for (const url of result.extractedUrls.slice(0, 3)) { // Limit to 3
-          const gh = await processGitHub(url)
-          if (gh) {
-            extractedEntities.repos?.push(url)
-            // Use the first repo's metadata for classification context
-            if (!githubMetadata) {
-              githubMetadata = gh
-            }
+      // Process any GitHub URLs found in the transcript
+      for (const url of result.extractedUrls.slice(0, 3)) { // Limit to 3
+        const gh = await processGitHub(url)
+        if (gh) {
+          extractedEntities.repos?.push(url)
+          // Use the first repo's metadata for classification context
+          if (!githubMetadata) {
+            githubMetadata = gh
           }
         }
       }
     } else if (sourceType === 'github') {
       githubMetadata = await processGitHub(item.source_url)
+      if (!githubMetadata) {
+        throw new Error('GitHub metadata fetch failed')
+      }
     }
     // TODO: Add article processor
 
