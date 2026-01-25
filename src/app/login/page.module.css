@@ -1,19 +1,14 @@
 /* Viewport - white background */
 .main {
-  min-height: 100vh;
-  min-height: 100dvh;
+  position: fixed;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   background: white;
   padding: 20px;
   box-sizing: border-box;
-}
-
-/* Ensure html/body don't show through */
-:global(html),
-:global(body) {
-  background: white;
+  overflow: auto;
 }
 
 /* Side by side container */
