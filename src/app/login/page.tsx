@@ -1,24 +1,53 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import styles from './page.module.css'
 
 const TITLE = "dont login"
 
-function FloatingLetter({ letter, index }: { letter: string; index: number }) {
+// Colors for each letter when in "color mode"
+const LETTER_COLORS = [
+  '#FF6B6B', // d - coral
+  '#FFA94D', // o - orange
+  '#FFD43B', // n - yellow
+  '#69DB7C', // t - green
+  '#69DB7C', // (space)
+  '#4DABF7', // l - blue
+  '#9775FA', // o - purple
+  '#F783AC', // g - pink
+  '#FF6B6B', // i - coral
+  '#4DABF7', // n - blue
+]
+
+function FloatingLetter({
+  letter,
+  index,
+  isColorful
+}: {
+  letter: string
+  index: number
+  isColorful: boolean
+}) {
   return (
     <motion.span
       className={styles.letter}
       animate={{
         y: [0, -8, 0],
+        color: isColorful ? LETTER_COLORS[index] : '#000',
       }}
       transition={{
-        duration: 2,
-        repeat: Infinity,
-        ease: "easeInOut",
-        delay: index * 0.15,
+        y: {
+          duration: 2,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: index * 0.15,
+        },
+        color: {
+          duration: 0.5,
+          ease: "easeInOut",
+        }
       }}
     >
       {letter === ' ' ? '\u00A0' : letter}
@@ -26,11 +55,16 @@ function FloatingLetter({ letter, index }: { letter: string; index: number }) {
   )
 }
 
-function FloatingTitle() {
+function FloatingTitle({ isColorful }: { isColorful: boolean }) {
   return (
     <div className={styles.floatingTitle}>
       {TITLE.split('').map((letter, index) => (
-        <FloatingLetter key={index} letter={letter} index={index} />
+        <FloatingLetter
+          key={index}
+          letter={letter}
+          index={index}
+          isColorful={isColorful}
+        />
       ))}
     </div>
   )
@@ -89,9 +123,27 @@ function LoginForm() {
 }
 
 export default function LoginPage() {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [isColorful, setIsColorful] = useState(false)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    const handleTimeUpdate = () => {
+      const time = video.currentTime
+      // Color mode between 3-6 seconds
+      setIsColorful(time >= 3 && time <= 6)
+    }
+
+    video.addEventListener('timeupdate', handleTimeUpdate)
+    return () => video.removeEventListener('timeupdate', handleTimeUpdate)
+  }, [])
+
   return (
     <main className={styles.main}>
       <video
+        ref={videoRef}
         className={styles.bgVideo}
         autoPlay
         loop
@@ -103,7 +155,7 @@ export default function LoginPage() {
       </video>
 
       <div className={styles.content}>
-        <FloatingTitle />
+        <FloatingTitle isColorful={isColorful} />
         <Suspense fallback={<div className={styles.form} />}>
           <LoginForm />
         </Suspense>
