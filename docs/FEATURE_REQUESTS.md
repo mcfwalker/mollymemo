@@ -4,11 +4,11 @@
 
 ### 1. Improve link visibility
 **Priority:** High
-**Status:** Open
+**Status:** Done
 
-Links are the same color as text, making them hard to differentiate. Options:
-- Add underlines to links
-- Use an orange/contrasting color for links
+~~Links are the same color as text, making them hard to differentiate.~~
+
+**Solution:** Added `--link` and `--link-hover` CSS variables with orange color. Theme-friendly - just update the variables to change link colors globally.
 
 ---
 
