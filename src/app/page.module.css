@@ -273,7 +273,6 @@
   align-items: center;
   gap: 4px;
   font-size: 14px;
-  font-family: var(--font-mono);
 }
 
 .repoLink::before {
@@ -299,7 +298,7 @@
   background: var(--bg);
   padding: 12px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.5;
   max-height: 200px;
   overflow-y: auto;
