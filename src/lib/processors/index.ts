@@ -75,7 +75,7 @@ export async function processItem(itemId: string): Promise<void> {
       if (xData.usedGrok) {
         // Grok already extracted repos from citations
         for (const repoUrl of xData.resolvedUrls) {
-          if (repoUrl.includes('github.com')) {
+          if (repoUrl.includes('github.com') && !extractedEntities.repos?.includes(repoUrl)) {
             const gh = await processGitHub(repoUrl)
             if (gh) {
               extractedEntities.repos?.push(repoUrl)
@@ -143,13 +143,16 @@ export async function processItem(itemId: string): Promise<void> {
       // Smart extraction pass: catch repos mentioned in transcript that weren't explicitly linked
       if (transcript && extractedEntities.repos?.length === 0) {
         console.log('No repos found via Grok/oembed, running smart extraction...')
-        const smartRepos = await extractReposFromTranscript(transcript, [])
+        const existingUrls = extractedEntities.repos || []
+        const smartRepos = await extractReposFromTranscript(transcript, existingUrls)
         for (const repo of smartRepos.slice(0, 3)) {
-          const gh = await processGitHub(repo.url)
-          if (gh) {
-            extractedEntities.repos?.push(repo.url)
-            if (!githubMetadata) {
-              githubMetadata = gh
+          if (!extractedEntities.repos?.includes(repo.url)) {
+            const gh = await processGitHub(repo.url)
+            if (gh) {
+              extractedEntities.repos?.push(repo.url)
+              if (!githubMetadata) {
+                githubMetadata = gh
+              }
             }
           }
         }

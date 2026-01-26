@@ -118,12 +118,15 @@ Format your response as JSON:
         return repo // Single name, can't convert
       })
 
+      // Deduplicate citations + repo URLs
+      const allCitations = [...new Set([...citations, ...repoUrls])]
+
       return {
         text: parsed.fullText || content,
         videoTranscript: parsed.videoTranscript || null,
         authorName: parsed.authorName || null,
         summary: parsed.summary || '',
-        citations: [...citations, ...repoUrls],
+        citations: allCitations,
       }
     }
 
