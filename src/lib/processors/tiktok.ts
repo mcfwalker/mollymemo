@@ -88,7 +88,13 @@ async function extractRepoNames(
         model: 'gpt-4o-mini',
         messages: [{
           role: 'user',
-          content: `Extract any GitHub repository names mentioned in this transcript. Return ONLY a JSON array of repo names (e.g., ["repo-name", "another-repo"]). If no repos are mentioned, return [].
+          content: `Extract GitHub repository names ONLY if they are explicitly mentioned as GitHub repos in this transcript.
+
+Rules:
+- Only include repos mentioned with "github", "repo", "repository", or in "owner/repo" format
+- Do NOT include general tool names, apps, or services (e.g., "Nanobanana" is a service, not a repo)
+- Do NOT guess - if unsure, don't include it
+- Return ONLY a JSON array of repo names (e.g., ["owner/repo-name"]). If no repos are explicitly mentioned, return [].
 
 Transcript:
 ${transcript.slice(0, 2000)}`
