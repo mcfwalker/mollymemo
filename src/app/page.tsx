@@ -4,11 +4,9 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Item } from '@/lib/supabase'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { FilterBar } from '@/components/FilterBar'
+import { ItemCard } from '@/components/ItemCard'
 import styles from './page.module.css'
-
-const DOMAINS = ['all', 'vibe-coding', 'ai-filmmaking', 'other']
-const CONTENT_TYPES = ['all', 'repo', 'technique', 'tool', 'resource', 'person']
-const STATUSES = ['all', 'processed', 'pending', 'failed']
 
 export default function Home() {
   const router = useRouter()
@@ -20,8 +18,6 @@ export default function Home() {
   const [contentType, setContentType] = useState('all')
   const [status, setStatus] = useState('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editTitle, setEditTitle] = useState('')
 
   const handleLogout = async () => {
     await fetch('/api/auth', { method: 'DELETE' })
@@ -82,36 +78,6 @@ export default function Home() {
     }
   }
 
-  const startEditing = (item: Item) => {
-    setEditingId(item.id)
-    setEditTitle(item.title || '')
-  }
-
-  const saveTitle = async (id: string) => {
-    if (editTitle.trim()) {
-      await updateItem(id, { title: editTitle.trim() })
-    }
-    setEditingId(null)
-  }
-
-  const cancelEditing = () => {
-    setEditingId(null)
-    setEditTitle('')
-  }
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    const now = new Date()
-    const diff = now.getTime() - date.getTime()
-    const hours = Math.floor(diff / (1000 * 60 * 60))
-    const days = Math.floor(hours / 24)
-
-    if (hours < 1) return 'just now'
-    if (hours < 24) return `${hours}h ago`
-    if (days < 7) return `${days}d ago`
-    return date.toLocaleDateString()
-  }
-
   return (
     <main className={styles.main}>
       <header className={styles.header}>
@@ -131,30 +97,15 @@ export default function Home() {
         </div>
       </header>
 
-      <div className={styles.filters}>
-        <select value={domain} onChange={(e) => setDomain(e.target.value)}>
-          {DOMAINS.map((d) => (
-            <option key={d} value={d}>
-              {d === 'all' ? 'All Domains' : d}
-            </option>
-          ))}
-        </select>
-        <select value={contentType} onChange={(e) => setContentType(e.target.value)}>
-          {CONTENT_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t === 'all' ? 'All Types' : t}
-            </option>
-          ))}
-        </select>
-        <select value={status} onChange={(e) => setStatus(e.target.value)}>
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s === 'all' ? 'All Status' : s}
-            </option>
-          ))}
-        </select>
-        <span className={styles.count}>{total} items</span>
-      </div>
+      <FilterBar
+        domain={domain}
+        contentType={contentType}
+        status={status}
+        total={total}
+        onDomainChange={setDomain}
+        onContentTypeChange={setContentType}
+        onStatusChange={setStatus}
+      />
 
       <div className={styles.list}>
         {loading ? (
@@ -163,135 +114,14 @@ export default function Home() {
           <div className={styles.empty}>No items found</div>
         ) : (
           items.map((item) => (
-            <div
+            <ItemCard
               key={item.id}
-              className={`${styles.card} ${expandedId === item.id ? styles.expanded : ''}`}
-              onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
-            >
-              <div className={styles.cardHeader}>
-                <div className={styles.cardTitle}>
-                  {editingId === item.id ? (
-                    <input
-                      type="text"
-                      className={styles.editInput}
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveTitle(item.id)
-                        if (e.key === 'Escape') cancelEditing()
-                      }}
-                      onBlur={() => saveTitle(item.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      autoFocus
-                    />
-                  ) : (
-                    <span className={styles.name}>
-                      {item.title || 'Processing...'}
-                      <button
-                        className={styles.editBtn}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          startEditing(item)
-                        }}
-                        title="Edit title"
-                      >
-                        ✎
-                      </button>
-                    </span>
-                  )}
-                  <select
-                    className={styles.domainSelect}
-                    value={item.domain || 'other'}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => updateItem(item.id, { domain: e.target.value })}
-                  >
-                    {DOMAINS.filter((d) => d !== 'all').map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className={styles.cardMeta}>
-                  <span className={styles.type}>{item.content_type || item.source_type}</span>
-                  {item.github_metadata?.stars && (
-                    <span className={styles.stars}>★ {item.github_metadata.stars.toLocaleString()}</span>
-                  )}
-                  {item.github_metadata?.language && (
-                    <span className={styles.language}>{item.github_metadata.language}</span>
-                  )}
-                  <span className={styles.date}>{formatDate(item.captured_at)}</span>
-                  <span className={`${styles.status} ${styles[item.status]}`}>{item.status}</span>
-                </div>
-              </div>
-
-              {item.summary && <p className={styles.summary}>{item.summary}</p>}
-
-              {expandedId === item.id && (
-                <div className={styles.cardDetails}>
-                  <div className={styles.detailRow}>
-                    <strong>Source:</strong>
-                    <a href={item.source_url} target="_blank" rel="noopener noreferrer">
-                      {item.source_url}
-                    </a>
-                  </div>
-                  {item.extracted_entities?.repos && item.extracted_entities.repos.length > 0 && (
-                    <div className={styles.detailRow}>
-                      <strong>GitHub Repos:</strong>
-                      <div className={styles.repoList}>
-                        {item.extracted_entities.repos.map((repo) => (
-                          <a
-                            key={repo}
-                            href={repo}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={styles.repoLink}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {repo.replace('https://github.com/', '')}
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {item.tags && item.tags.length > 0 && (
-                    <div className={styles.detailRow}>
-                      <strong>Tags:</strong>
-                      <span className={styles.tags}>
-                        {item.tags.map((tag) => (
-                          <span key={tag} className={styles.tag}>
-                            {tag}
-                          </span>
-                        ))}
-                      </span>
-                    </div>
-                  )}
-                  {item.transcript && (
-                    <div className={styles.detailRow}>
-                      <strong>Transcript:</strong>
-                      <p className={styles.transcript}>{item.transcript}</p>
-                    </div>
-                  )}
-                  {item.error_message && (
-                    <div className={styles.detailRow}>
-                      <strong>Error:</strong>
-                      <span className={styles.error}>{item.error_message}</span>
-                    </div>
-                  )}
-                  <div className={styles.cardActions}>
-                    <button
-                      className={styles.deleteBtn}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        deleteItem(item.id)
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+              item={item}
+              isExpanded={expandedId === item.id}
+              onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
+              onUpdate={updateItem}
+              onDelete={deleteItem}
+            />
           ))
         )}
       </div>

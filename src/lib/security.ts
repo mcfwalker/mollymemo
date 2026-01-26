@@ -16,8 +16,12 @@ export function secureCompare(a: string, b: string): boolean {
   }
 }
 
-// Simple in-memory rate limiter for serverless
-// Note: This resets on cold starts, which is acceptable for basic protection
+// In-memory rate limiter for serverless environments
+// Trade-off: Resets on cold starts, but acceptable for this use case because:
+// - Cold starts are infrequent with regular traffic
+// - Only protects login (password is the primary defense)
+// - Upgrading to Redis/Upstash adds cost and complexity
+// For high-security needs, use Upstash Redis: https://upstash.com/docs/redis/sdks/ratelimit-ts
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>()
 
 interface RateLimitResult {
@@ -79,7 +83,8 @@ export function generateSessionToken(expiresInMs: number = 30 * 24 * 60 * 60 * 1
   return `${data}.${signature}`
 }
 
-// Verify session token
+// Verify session token (Node.js crypto version - used in tests)
+// Note: middleware.ts has an equivalent Web Crypto API version for Edge Runtime
 export function verifySessionToken(token: string): boolean {
   if (!token || !token.includes('.')) return false
 

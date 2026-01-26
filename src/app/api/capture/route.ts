@@ -37,6 +37,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid URL' }, { status: 400 })
     }
 
+    // Reject malformed hostnames (iOS Share Sheet sometimes sends garbage)
+    const hostname = parsedUrl.hostname.toLowerCase()
+    if (
+      !hostname ||
+      hostname === 'null' ||
+      hostname === '(null)' ||
+      hostname === 'undefined' ||
+      !hostname.includes('.')
+    ) {
+      return NextResponse.json(
+        { error: 'Invalid URL: malformed hostname' },
+        { status: 400 }
+      )
+    }
+
     const supabase = createServerClient()
 
     // Check for recent duplicate (same URL in last 24h)

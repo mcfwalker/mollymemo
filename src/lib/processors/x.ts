@@ -5,6 +5,8 @@ interface XMetadata {
   authorName: string
   authorUrl: string
   resolvedUrls: string[]
+  isLinkOnly: boolean      // Tweet text is just a URL with no commentary
+  xArticleUrl: string | null  // If resolved URL is an X Article (requires login)
 }
 
 export async function processX(url: string): Promise<XMetadata | null> {
@@ -62,11 +64,20 @@ export async function processX(url: string): Promise<XMetadata | null> {
       }
     }
 
+    // Check if tweet is link-only (just URLs, no real commentary)
+    const textWithoutUrls = text.replace(/https?:\/\/\S+/g, '').trim()
+    const isLinkOnly = textWithoutUrls.length < 10 // Less than 10 chars of actual text
+
+    // Check if any resolved URL is an X Article (requires login)
+    const xArticleUrl = resolvedUrls.find(url => url.includes('x.com/i/article/')) || null
+
     return {
       text,
       authorName: data.author_name,
       authorUrl: data.author_url,
       resolvedUrls,
+      isLinkOnly,
+      xArticleUrl,
     }
   } catch (error) {
     console.error('X processing error:', error)

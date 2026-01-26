@@ -19,8 +19,9 @@ export function createServerClient() {
 // Types for our items table
 export interface Item {
   id: string
+  item_number: number
   source_url: string
-  source_type: 'tiktok' | 'github' | 'article' | 'youtube'
+  source_type: 'tiktok' | 'github' | 'article' | 'youtube' | 'x'
   title: string | null
   summary: string | null
   transcript: string | null

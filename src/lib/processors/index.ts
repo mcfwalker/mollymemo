@@ -66,6 +66,29 @@ export async function processItem(itemId: string): Promise<void> {
       // Use tweet text as transcript for classification
       transcript = xData.text
 
+      // Handle X Articles (require login, can't extract content)
+      if (xData.xArticleUrl) {
+        // Store the resolved article URL and mark appropriately
+        const updates: Partial<Item> = {
+          status: 'processed',
+          processed_at: new Date().toISOString(),
+          title: `@${xData.authorName} shared: X Article (login required)`,
+          summary: `X Article shared by ${xData.authorName}. Content requires X login to view.`,
+          transcript: `Resolved URL: ${xData.xArticleUrl}`,
+          content_type: 'resource',
+          extracted_entities: { repos: [], tools: [], techniques: [] },
+          raw_data: { xData, xArticleUrl: xData.xArticleUrl },
+        }
+        await supabase.from('items').update(updates).eq('id', itemId)
+        return // Skip further processing
+      }
+
+      // Handle link-only tweets (just a URL with no commentary)
+      if (xData.isLinkOnly && xData.resolvedUrls.length > 0) {
+        // Store resolved URLs prominently
+        transcript = `Shared link: ${xData.resolvedUrls[0]}`
+      }
+
       // Check resolved URLs for GitHub repos (t.co links resolved)
       for (const resolvedUrl of xData.resolvedUrls) {
         if (resolvedUrl.includes('github.com')) {

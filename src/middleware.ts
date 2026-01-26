@@ -21,6 +21,7 @@ function base64urlEncode(buffer: ArrayBuffer): string {
 }
 
 // Verify session token using Web Crypto API (Edge Runtime compatible)
+// Note: security.ts has an equivalent Node.js crypto version for testing
 async function verifyToken(token: string): Promise<boolean> {
   if (!token || !token.includes('.')) return false
 
