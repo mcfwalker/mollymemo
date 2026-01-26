@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
   if (search) {
     // Sanitize input to prevent SQL injection in PostgREST filters
     const sanitized = sanitizeSearchInput(search)
-    query = query.or(`title.ilike.%${sanitized}%,summary.ilike.%${sanitized}%`)
+    // Search title, summary, transcript, and tags (cast to text for partial match)
+    query = query.or(`title.ilike.%${sanitized}%,summary.ilike.%${sanitized}%,transcript.ilike.%${sanitized}%,tags::text.ilike.%${sanitized}%`)
   }
 
   const { data, error, count } = await query
