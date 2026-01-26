@@ -160,7 +160,7 @@
 
 .name {
   font-weight: 600;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .domainSelect {
@@ -231,7 +231,7 @@
 }
 
 .summary {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-muted);
   margin-top: 8px;
   line-height: 1.4;
@@ -247,7 +247,7 @@
 }
 
 .detailRow {
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .detailRow strong {
@@ -272,7 +272,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 13px;
+  font-size: 14px;
   font-family: var(--font-mono);
 }
 
