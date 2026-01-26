@@ -16,10 +16,11 @@
 
 ### 2. Surface extracted GitHub repos in UI
 **Priority:** Medium
-**Status:** Partially implemented
+**Status:** Done (basic), enhancements possible
 
-GitHub URLs mentioned in TikTok transcripts are already extracted and stored in `extracted_entities.repos`. Need to:
-- [ ] Display extracted repos prominently in the item card
+GitHub URLs mentioned in TikTok transcripts are already extracted and stored in `extracted_entities.repos`.
+
+- [x] Display extracted repos in the expanded item card
 - [ ] Consider adding a dedicated `github_url` field for the primary repo
 - [ ] Show repo metadata (stars, description) inline
 
