@@ -67,10 +67,18 @@ Format your response as JSON:
     }
 
     const data = await response.json()
+    console.log('Grok API raw response:', JSON.stringify(data, null, 2))
 
-    // Extract the response content
-    const content = data.output?.[0]?.content || data.choices?.[0]?.message?.content || ''
-    const citations = data.citations || []
+    // Extract the response content - try multiple paths
+    const content = data.output?.[0]?.content
+      || data.output?.content
+      || data.choices?.[0]?.message?.content
+      || data.content
+      || ''
+    const citations = data.citations || data.output?.citations || []
+
+    console.log('Grok extracted content:', content?.slice(0, 500))
+    console.log('Grok citations:', citations)
 
     // Try to parse as JSON, fall back to raw content
     let parsed
@@ -79,9 +87,10 @@ Format your response as JSON:
       const jsonMatch = content.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         parsed = JSON.parse(jsonMatch[0])
+        console.log('Grok parsed JSON:', parsed)
       }
-    } catch {
-      // If not valid JSON, use raw content
+    } catch (parseError) {
+      console.error('Grok JSON parse error:', parseError)
       parsed = null
     }
 

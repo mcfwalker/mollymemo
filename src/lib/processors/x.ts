@@ -113,14 +113,28 @@ async function processXWithGrok(url: string): Promise<XMetadata | null> {
 export async function processX(url: string): Promise<XMetadata | null> {
   // Try Grok first (if API key is configured)
   if (process.env.XAI_API_KEY) {
-    console.log('Processing X content with Grok API...')
+    console.log('Processing X content with Grok API...', url)
     const grokResult = await processXWithGrok(url)
     if (grokResult) {
+      console.log('Grok succeeded:', {
+        textLength: grokResult.text?.length,
+        authorName: grokResult.authorName,
+        summary: grokResult.summary?.slice(0, 100),
+        usedGrok: grokResult.usedGrok
+      })
       return grokResult
     }
     console.log('Grok API failed, falling back to oembed...')
+  } else {
+    console.log('XAI_API_KEY not configured, using oembed...')
   }
 
   // Fallback to oembed
-  return processXWithOembed(url)
+  const oembedResult = await processXWithOembed(url)
+  console.log('Oembed result:', {
+    textLength: oembedResult?.text?.length,
+    authorName: oembedResult?.authorName,
+    isLinkOnly: oembedResult?.isLinkOnly
+  })
+  return oembedResult
 }
