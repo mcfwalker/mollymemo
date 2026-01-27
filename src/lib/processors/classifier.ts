@@ -1,5 +1,7 @@
 // AI classifier using OpenAI GPT-4o mini
 
+import { domains, defaultDomain, getDomainPromptList } from '../config/domains'
+
 interface ClassificationResult {
   title: string
   summary: string
@@ -41,6 +43,9 @@ export async function classify(content: {
     context += `Page content:\n${content.pageContent.slice(0, 3000)}\n\n`
   }
 
+  const domainList = getDomainPromptList()
+  const validDomains = [...Object.keys(domains), defaultDomain].map(d => `"${d}"`).join(', ')
+
   const prompt = `Analyze this content and classify it.
 
 ${context}
@@ -48,7 +53,8 @@ ${context}
 Return a JSON object with:
 - title: A concise title (max 60 chars). For repos, use the repo name. For techniques, describe the technique.
 - summary: One sentence summary (max 150 chars) of what this is and why it's useful.
-- domain: One of "vibe-coding", "ai-filmmaking", or "other". Pick "vibe-coding" for anything related to software development, AI coding tools, developer productivity. Pick "ai-filmmaking" for anything related to video generation, AI video, filmmaking with AI.
+- domain: One of ${validDomains}. Choose the best match:
+  ${domainList}
 - content_type: One of "repo", "technique", "tool", "resource", "person".
   - repo = GitHub repository
   - technique = A method, pattern, or approach
@@ -92,10 +98,14 @@ Return ONLY valid JSON, no markdown or explanation.`
     const jsonStr = text.replace(/```json\n?|\n?```/g, '').trim()
     const result = JSON.parse(jsonStr)
 
+    // Validate domain against configured domains
+    const validDomainSet = new Set([...Object.keys(domains), defaultDomain])
+    const returnedDomain = validDomainSet.has(result.domain) ? result.domain : defaultDomain
+
     return {
       title: result.title || 'Untitled',
       summary: result.summary || '',
-      domain: result.domain || 'other',
+      domain: returnedDomain,
       content_type: result.content_type || 'resource',
       tags: result.tags || [],
     }
