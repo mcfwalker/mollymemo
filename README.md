@@ -56,16 +56,20 @@ npm run dev
 
 Connect the repo to Vercel and add the same environment variables.
 
-### 5. Create iOS Shortcut
+### 5. Set up Telegram Bot (recommended)
 
-1. Create new Shortcut
-2. Add "Receive input from Share Sheet" (URLs)
-3. Add "Get Contents of URL" action:
-   - URL: `https://lazylist.mcfw.io/api/capture`
-   - Method: POST
-   - Headers: `Authorization: Bearer YOUR_API_SECRET_KEY`
-   - Body: JSON `{"url": "[Shortcut Input]"}`
-4. Add "Show Notification": "✓ Captured"
+The Telegram bot is the easiest way to capture links from any device.
+
+1. Create a bot via [@BotFather](https://t.me/BotFather) (`/newbot`)
+2. Add `TELEGRAM_BOT_TOKEN` to your environment
+3. Get your user ID from [@userinfobot](https://t.me/userinfobot)
+4. Add your ID to `TELEGRAM_ALLOWED_USERS` (comma-separated for multiple users)
+5. Register the webhook:
+   ```bash
+   curl "https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://lazylist.mcfw.io/api/telegram"
+   ```
+
+Now just share any link to your bot to capture it.
 
 ## API
 

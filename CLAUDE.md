@@ -27,7 +27,8 @@ npm run build    # Production build
 
 ## Key Files
 
-- `src/app/api/capture/route.ts` — Capture endpoint for iOS Shortcut
+- `src/app/api/telegram/route.ts` — Telegram bot webhook (primary capture method)
+- `src/app/api/capture/route.ts` — REST API capture endpoint (deprecated - use Telegram)
 - `src/lib/processors/` — Source-specific extraction (TikTok, GitHub, article)
 - `src/lib/classifier.ts` — AI categorization
 
