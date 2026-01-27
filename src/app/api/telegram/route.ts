@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
           .eq('id', item.id)
           .single()
 
-        if (processed?.status === 'ready') {
+        if (processed?.status === 'processed') {
           const title = processed.title || 'Untitled'
           const summary = processed.summary
             ? `\n${processed.summary.slice(0, 200)}${processed.summary.length > 200 ? '...' : ''}`

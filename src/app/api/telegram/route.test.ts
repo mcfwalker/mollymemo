@@ -249,7 +249,7 @@ describe('telegram webhook route', () => {
           data: {
             title: 'Example Article',
             summary: 'This is a summary',
-            status: 'ready',
+            status: 'processed',
           },
           error: null,
         })
@@ -282,7 +282,7 @@ describe('telegram webhook route', () => {
           data: {
             title: 'Title',
             summary: longSummary,
-            status: 'ready',
+            status: 'processed',
           },
           error: null,
         })
