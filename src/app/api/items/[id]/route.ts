@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
+import { processItem } from '@/lib/processors'
 
 export async function GET(
   request: NextRequest,
@@ -84,4 +85,41 @@ export async function DELETE(
   }
 
   return NextResponse.json({ success: true })
+}
+
+// POST: Reprocess an item
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const supabase = createServerClient()
+
+  // Verify item exists
+  const { data: item, error } = await supabase
+    .from('items')
+    .select('id, status')
+    .eq('id', id)
+    .single()
+
+  if (error || !item) {
+    return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+  }
+
+  // Reset status to pending before reprocessing
+  await supabase
+    .from('items')
+    .update({ status: 'pending', error_message: null })
+    .eq('id', id)
+
+  // Fire-and-forget: process in background
+  processItem(id).catch(err => {
+    console.error('Reprocess error:', err)
+  })
+
+  return NextResponse.json({
+    id,
+    status: 'reprocessing',
+    message: 'Item queued for reprocessing',
+  })
 }
