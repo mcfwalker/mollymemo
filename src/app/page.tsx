@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Item, CurrentMonthStats, getCurrentMonthStats, createBrowserClient } from '@/lib/supabase'
+import { Item, CurrentMonthStats } from '@/lib/supabase'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { FilterBar } from '@/components/FilterBar'
 import { ItemCard } from '@/components/ItemCard'
@@ -55,9 +55,11 @@ export default function Home() {
     async function fetchStats() {
       setStatsLoading(true)
       try {
-        const supabase = createBrowserClient()
-        const stats = await getCurrentMonthStats(supabase)
-        setCostStats(stats)
+        const res = await fetch('/api/stats')
+        if (res.ok) {
+          const stats = await res.json()
+          setCostStats(stats)
+        }
       } catch (err) {
         console.error('Error fetching stats:', err)
       } finally {

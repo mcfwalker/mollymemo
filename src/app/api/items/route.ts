@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { sanitizeSearchInput } from '@/lib/security'
+import { getCurrentUserId } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
+  const userId = getCurrentUserId(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const searchParams = request.nextUrl.searchParams
   const domain = searchParams.get('domain')
   const contentType = searchParams.get('type')
@@ -16,6 +22,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from('items')
     .select('*', { count: 'exact' })
+    .eq('user_id', userId)
     .order('captured_at', { ascending: false })
     .range(offset, offset + limit - 1)
 

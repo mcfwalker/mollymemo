@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { secureCompare, checkRateLimit, generateSessionToken } from '@/lib/security'
+import { verifyPassword, checkRateLimit, generateSessionToken } from '@/lib/security'
+import { createServerClient } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   // Rate limit by IP
@@ -19,21 +20,31 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { password } = await request.json()
+    const { email, password } = await request.json()
 
-    if (!password) {
-      return NextResponse.json({ error: 'Password required' }, { status: 400 })
+    if (!email || !password) {
+      return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
     }
 
-    const correctPassword = process.env.SITE_PASSWORD || ''
+    // Look up user by email
+    const supabase = createServerClient()
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, password_hash')
+      .eq('email', email.toLowerCase().trim())
+      .single()
 
-    // Timing-safe password comparison
-    if (!secureCompare(password, correctPassword)) {
-      return NextResponse.json({ error: 'Invalid password' }, { status: 401 })
+    if (error || !user) {
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
-    // Generate secure session token with 30-day expiration
-    const sessionToken = generateSessionToken(30 * 24 * 60 * 60 * 1000)
+    // Verify password hash
+    if (!verifyPassword(password, user.password_hash)) {
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+    }
+
+    // Generate secure session token with user ID and 30-day expiration
+    const sessionToken = generateSessionToken(user.id, 30 * 24 * 60 * 60 * 1000)
 
     const response = NextResponse.json({ success: true })
     response.cookies.set('lazylist_auth', sessionToken, {

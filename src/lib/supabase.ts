@@ -16,10 +16,20 @@ export function createServerClient() {
   )
 }
 
+// Types for our users table
+export interface User {
+  id: string
+  email: string
+  display_name: string | null
+  telegram_user_id: number | null
+  created_at: string
+}
+
 // Types for our items table
 export interface Item {
   id: string
   item_number: number
+  user_id: string
   source_url: string
   source_type: 'tiktok' | 'github' | 'article' | 'youtube' | 'x'
   title: string | null

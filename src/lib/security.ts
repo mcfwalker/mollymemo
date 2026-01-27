@@ -1,4 +1,4 @@
-import { timingSafeEqual, randomBytes, createHmac } from 'crypto'
+import { timingSafeEqual, randomBytes, createHmac, scryptSync } from 'crypto'
 
 // Timing-safe string comparison to prevent timing attacks
 export function secureCompare(a: string, b: string): boolean {
@@ -11,6 +11,25 @@ export function secureCompare(a: string, b: string): boolean {
 
   try {
     return timingSafeEqual(Buffer.from(aPadded), Buffer.from(bPadded))
+  } catch {
+    return false
+  }
+}
+
+// Hash password using scrypt
+export function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString('hex')
+  const hash = scryptSync(password, salt, 64).toString('hex')
+  return `${salt}:${hash}`
+}
+
+// Verify password against stored hash
+export function verifyPassword(password: string, storedHash: string): boolean {
+  try {
+    const [salt, hash] = storedHash.split(':')
+    if (!salt || !hash) return false
+    const derivedHash = scryptSync(password, salt, 64).toString('hex')
+    return secureCompare(derivedHash, hash)
   } catch {
     return false
   }
@@ -68,12 +87,13 @@ export function checkRateLimit(
 }
 
 // Generate secure session token with HMAC signature
-export function generateSessionToken(expiresInMs: number = 30 * 24 * 60 * 60 * 1000): string {
+export function generateSessionToken(userId: string, expiresInMs: number = 30 * 24 * 60 * 60 * 1000): string {
   const secret = process.env.SITE_PASSWORD_HASH || process.env.API_SECRET_KEY
   if (!secret) throw new Error('No secret configured')
 
   const payload = {
     id: randomBytes(16).toString('hex'),
+    userId,
     exp: Date.now() + expiresInMs
   }
 
@@ -105,6 +125,30 @@ export function verifySessionToken(token: string): boolean {
     return true
   } catch {
     return false
+  }
+}
+
+// Extract user ID from session token (Node.js crypto version)
+export function getUserIdFromToken(token: string): string | null {
+  if (!token || !token.includes('.')) return null
+
+  const secret = process.env.SITE_PASSWORD_HASH || process.env.API_SECRET_KEY
+  if (!secret) return null
+
+  try {
+    const [data, signature] = token.split('.')
+
+    // Verify signature first
+    const expectedSig = createHmac('sha256', secret).update(data).digest('base64url')
+    if (!secureCompare(signature, expectedSig)) return null
+
+    // Check expiration and extract userId
+    const payload = JSON.parse(Buffer.from(data, 'base64url').toString())
+    if (payload.exp < Date.now()) return null
+
+    return payload.userId || null
+  } catch {
+    return null
   }
 }
 

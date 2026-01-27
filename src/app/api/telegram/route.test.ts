@@ -26,13 +26,15 @@ vi.mock('@/lib/processors', () => ({
 
 vi.mock('@/lib/telegram', () => ({
   sendMessage: vi.fn().mockResolvedValue(true),
-  isAllowedUser: vi.fn(),
+  getUserByTelegramId: vi.fn(),
   extractUrl: vi.fn(),
 }))
 
 import { createServerClient } from '@/lib/supabase'
 import { processItem } from '@/lib/processors'
-import { sendMessage, isAllowedUser, extractUrl } from '@/lib/telegram'
+import { sendMessage, getUserByTelegramId, extractUrl } from '@/lib/telegram'
+
+const TEST_USER = { id: 'test-user-uuid', email: 'test@example.com', display_name: 'Test' }
 
 // Helper to create mock telegram update
 function createTelegramUpdate(
@@ -89,7 +91,7 @@ describe('telegram webhook route', () => {
       mockSupabase as unknown as ReturnType<typeof createServerClient>
     )
     vi.mocked(processItem).mockResolvedValue(undefined)
-    vi.mocked(isAllowedUser).mockReturnValue(true)
+    vi.mocked(getUserByTelegramId).mockResolvedValue(TEST_USER)
     vi.mocked(extractUrl).mockReturnValue('https://example.com')
     vi.mocked(sendMessage).mockResolvedValue(true)
 
@@ -130,7 +132,7 @@ describe('telegram webhook route', () => {
 
   describe('user authorization', () => {
     it('silently ignores unauthorized users', async () => {
-      vi.mocked(isAllowedUser).mockReturnValue(false)
+      vi.mocked(getUserByTelegramId).mockResolvedValue(null)
 
       const request = createTelegramUpdate(999999, 999999, 'https://example.com')
       const response = await POST(request)
@@ -141,7 +143,7 @@ describe('telegram webhook route', () => {
     })
 
     it('processes messages from allowed users', async () => {
-      vi.mocked(isAllowedUser).mockReturnValue(true)
+      vi.mocked(getUserByTelegramId).mockResolvedValue(TEST_USER)
 
       const request = createTelegramUpdate(123456, 123456, 'https://example.com')
       await POST(request)
@@ -216,7 +218,7 @@ describe('telegram webhook route', () => {
       expect(sendMessage).toHaveBeenCalledWith(123, 'Got it! Processing...')
     })
 
-    it('inserts item to database', async () => {
+    it('inserts item to database with user_id', async () => {
       const request = createTelegramUpdate(
         123,
         123,
@@ -228,6 +230,7 @@ describe('telegram webhook route', () => {
         source_url: 'https://example.com/',
         source_type: 'article',
         status: 'pending',
+        user_id: TEST_USER.id,
       })
     })
 

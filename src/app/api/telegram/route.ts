@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { detectSourceType } from '@/lib/processors/detect'
 import { processItem } from '@/lib/processors'
-import { sendMessage, isAllowedUser, extractUrl } from '@/lib/telegram'
+import { sendMessage, getUserByTelegramId, extractUrl } from '@/lib/telegram'
 
 interface TelegramUpdate {
   message?: {
@@ -23,11 +23,12 @@ export async function POST(request: NextRequest) {
     }
 
     const { from, chat, text } = update.message
-    const userId = from.id
+    const telegramUserId = from.id
     const chatId = chat.id
 
-    // Check user whitelist - silent ignore for unknown users
-    if (!isAllowedUser(userId)) {
+    // Look up user by Telegram ID - silent ignore for unknown users
+    const user = await getUserByTelegramId(telegramUserId)
+    if (!user) {
       return NextResponse.json({ ok: true })
     }
 
@@ -62,12 +63,13 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServerClient()
 
-    // Check for recent duplicate (same URL in last 24h)
+    // Check for recent duplicate (same URL in last 24h for this user)
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     const { data: existing } = await supabase
       .from('items')
       .select('id')
       .eq('source_url', parsedUrl.href)
+      .eq('user_id', user.id)
       .gte('captured_at', oneDayAgo)
       .limit(1)
 
@@ -85,6 +87,7 @@ export async function POST(request: NextRequest) {
         source_url: parsedUrl.href,
         source_type: sourceType,
         status: 'pending',
+        user_id: user.id,
       })
       .select('id')
       .single()

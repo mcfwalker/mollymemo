@@ -49,6 +49,7 @@ function FloatingTitle() {
 }
 
 function LoginForm() {
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -64,7 +65,7 @@ function LoginForm() {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ email, password }),
       })
 
       if (res.ok) {
@@ -73,7 +74,7 @@ function LoginForm() {
         router.refresh()
       } else {
         const data = await res.json()
-        setError(data.error || 'Invalid password')
+        setError(data.error || 'Invalid credentials')
       }
     } catch {
       setError('Something went wrong')
@@ -85,12 +86,19 @@ function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className={styles.form}>
       <input
+        type="email"
+        placeholder="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        className={styles.input}
+        autoFocus
+      />
+      <input
         type="password"
         placeholder="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         className={styles.input}
-        autoFocus
       />
       {error && <p className={styles.error}>{error}</p>}
       <button type="submit" className={styles.button} disabled={loading}>

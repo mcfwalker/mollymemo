@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { processItem } from '@/lib/processors'
+import { getCurrentUserId } from '@/lib/auth'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = getCurrentUserId(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { id } = await params
   const supabase = createServerClient()
 
@@ -13,6 +19,7 @@ export async function GET(
     .from('items')
     .select('*')
     .eq('id', id)
+    .eq('user_id', userId)
     .single()
 
   if (error || !data) {
@@ -26,6 +33,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = getCurrentUserId(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { id } = await params
 
   try {
@@ -51,6 +63,7 @@ export async function PATCH(
       .from('items')
       .update(updates)
       .eq('id', id)
+      .eq('user_id', userId)
       .select()
       .single()
 
@@ -71,6 +84,11 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = getCurrentUserId(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { id } = await params
   const supabase = createServerClient()
 
@@ -78,6 +96,7 @@ export async function DELETE(
     .from('items')
     .delete()
     .eq('id', id)
+    .eq('user_id', userId)
 
   if (error) {
     console.error('Delete error:', error)
@@ -92,14 +111,20 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = getCurrentUserId(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { id } = await params
   const supabase = createServerClient()
 
-  // Verify item exists
+  // Verify item exists and belongs to user
   const { data: item, error } = await supabase
     .from('items')
     .select('id, status')
     .eq('id', id)
+    .eq('user_id', userId)
     .single()
 
   if (error || !item) {
@@ -111,6 +136,7 @@ export async function POST(
     .from('items')
     .update({ status: 'pending', error_message: null })
     .eq('id', id)
+    .eq('user_id', userId)
 
   // Fire-and-forget: process in background
   processItem(id).catch(err => {

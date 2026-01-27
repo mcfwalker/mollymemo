@@ -1,4 +1,28 @@
+import { createServerClient } from '@/lib/supabase'
+
 const TELEGRAM_API = 'https://api.telegram.org/bot'
+
+export interface TelegramUser {
+  id: string
+  email: string
+  display_name: string | null
+}
+
+export async function getUserByTelegramId(telegramUserId: number): Promise<TelegramUser | null> {
+  const supabase = createServerClient()
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, email, display_name')
+    .eq('telegram_user_id', telegramUserId)
+    .single()
+
+  if (error || !data) {
+    return null
+  }
+
+  return data
+}
 
 export async function sendMessage(
   chatId: number,
@@ -33,6 +57,8 @@ export async function sendMessage(
   }
 }
 
+// Legacy function - kept for backward compatibility during migration
+// TODO: Remove after multi-user migration complete
 export function isAllowedUser(userId: number): boolean {
   const allowedUsers = process.env.TELEGRAM_ALLOWED_USERS || ''
   const userIds = allowedUsers.split(',').map((id) => id.trim())

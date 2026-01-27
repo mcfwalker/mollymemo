@@ -4,6 +4,9 @@ import {
   checkRateLimit,
   generateSessionToken,
   verifySessionToken,
+  getUserIdFromToken,
+  hashPassword,
+  verifyPassword,
   sanitizeSearchInput,
 } from './security'
 
@@ -80,6 +83,7 @@ describe('checkRateLimit', () => {
 
 describe('generateSessionToken and verifySessionToken', () => {
   const originalEnv = process.env
+  const testUserId = 'test-user-id-123'
 
   beforeEach(() => {
     process.env = { ...originalEnv, SITE_PASSWORD_HASH: 'test-secret-key-12345' }
@@ -90,17 +94,17 @@ describe('generateSessionToken and verifySessionToken', () => {
   })
 
   it('generates a valid token format', () => {
-    const token = generateSessionToken()
+    const token = generateSessionToken(testUserId)
     expect(token).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/)
   })
 
   it('generates verifiable tokens', () => {
-    const token = generateSessionToken()
+    const token = generateSessionToken(testUserId)
     expect(verifySessionToken(token)).toBe(true)
   })
 
   it('rejects tampered tokens', () => {
-    const token = generateSessionToken()
+    const token = generateSessionToken(testUserId)
     const [data, sig] = token.split('.')
     const tamperedToken = `${data}.${sig.slice(0, -1)}X`
     expect(verifySessionToken(tamperedToken)).toBe(false)
@@ -108,7 +112,7 @@ describe('generateSessionToken and verifySessionToken', () => {
 
   it('rejects expired tokens', () => {
     vi.useFakeTimers()
-    const token = generateSessionToken(1000) // 1 second expiry
+    const token = generateSessionToken(testUserId, 1000) // 1 second expiry
     vi.advanceTimersByTime(2000)
     expect(verifySessionToken(token)).toBe(false)
     vi.useRealTimers()
@@ -124,7 +128,40 @@ describe('generateSessionToken and verifySessionToken', () => {
     process.env = { ...originalEnv }
     delete process.env.SITE_PASSWORD_HASH
     delete process.env.API_SECRET_KEY
-    expect(() => generateSessionToken()).toThrow('No secret configured')
+    expect(() => generateSessionToken(testUserId)).toThrow('No secret configured')
+  })
+
+  it('extracts userId from valid token', () => {
+    const token = generateSessionToken(testUserId)
+    expect(getUserIdFromToken(token)).toBe(testUserId)
+  })
+
+  it('returns null for invalid token', () => {
+    expect(getUserIdFromToken('invalid.token')).toBe(null)
+    expect(getUserIdFromToken('')).toBe(null)
+  })
+})
+
+describe('hashPassword and verifyPassword', () => {
+  it('creates different hashes for same password', () => {
+    const hash1 = hashPassword('mypassword')
+    const hash2 = hashPassword('mypassword')
+    expect(hash1).not.toBe(hash2) // Different salts
+  })
+
+  it('verifies correct password', () => {
+    const hash = hashPassword('correctpassword')
+    expect(verifyPassword('correctpassword', hash)).toBe(true)
+  })
+
+  it('rejects incorrect password', () => {
+    const hash = hashPassword('correctpassword')
+    expect(verifyPassword('wrongpassword', hash)).toBe(false)
+  })
+
+  it('returns false for malformed hash', () => {
+    expect(verifyPassword('password', 'nocolon')).toBe(false)
+    expect(verifyPassword('password', '')).toBe(false)
   })
 })
 

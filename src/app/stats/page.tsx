@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { MonthStats, getMonthlyStats, createBrowserClient } from '@/lib/supabase'
+import { MonthStats } from '@/lib/supabase'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import styles from './page.module.css'
 
@@ -42,9 +42,11 @@ export default function StatsPage() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const supabase = createBrowserClient()
-        const stats = await getMonthlyStats(supabase)
-        setMonthlyStats(stats)
+        const res = await fetch('/api/stats/monthly')
+        if (res.ok) {
+          const stats = await res.json()
+          setMonthlyStats(stats)
+        }
       } catch (err) {
         console.error('Error fetching stats:', err)
       } finally {
