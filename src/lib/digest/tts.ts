@@ -18,7 +18,7 @@ const DEFAULT_OPTIONS: Required<TTSOptions> = {
   voice: 'marin',
   model: 'gpt-4o-mini-tts',
   speed: 1.0,
-  instructions: 'Speak warmly and conversationally, like a friendly colleague giving a morning briefing. Natural pacing, not rushed.',
+  instructions: 'Young, ambitious assistant. Sharp and decisive, loves her job. Friendly but gets down to business. Confident, clear, no filler.',
 }
 
 export async function textToSpeech(
