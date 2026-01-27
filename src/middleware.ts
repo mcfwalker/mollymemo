@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
 // Routes that don't require auth
-const PUBLIC_ROUTES = ['/login', '/api/auth', '/api/auth/callback', '/api/telegram']
+const PUBLIC_ROUTES = ['/login', '/api/auth', '/api/auth/callback', '/api/telegram', '/api/cron']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
