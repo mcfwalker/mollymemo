@@ -1,0 +1,139 @@
+// Script generator for daily voice digests
+// Uses Claude to generate personalized, conversational scripts
+
+import Anthropic from '@anthropic-ai/sdk'
+import { IMOGEN_SOUL } from './imogen'
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+})
+
+export interface DigestItem {
+  id: string
+  title: string
+  summary: string
+  domain: string | null
+  contentType: string | null
+  tags: string[] | null
+  sourceUrl: string
+}
+
+export interface DigestInput {
+  user: {
+    id: string
+    displayName: string | null
+    timezone: string
+  }
+  items: DigestItem[]
+  previousDigest: {
+    id: string
+    scriptText: string
+    generatedAt: Date
+    itemCount: number
+  } | null
+}
+
+export async function generateScript(input: DigestInput): Promise<string> {
+  const { user, items, previousDigest } = input
+  const userName = user.displayName || 'there'
+
+  // Build previous digest context
+  let previousContext = 'No previous digest — this is their first one. Start fresh without referencing past digests.'
+  if (previousDigest) {
+    const daysAgo = Math.floor(
+      (Date.now() - previousDigest.generatedAt.getTime()) / (1000 * 60 * 60 * 24)
+    )
+    const timeRef = daysAgo === 1 ? 'yesterday' : `${daysAgo} days ago`
+    previousContext = `Previous digest (${timeRef}, ${previousDigest.itemCount} items):
+---
+${previousDigest.scriptText.slice(0, 1500)}${previousDigest.scriptText.length > 1500 ? '...' : ''}
+---
+Reference this naturally if there's a thematic connection. Don't force it.`
+  }
+
+  // Group items by domain for structure hints
+  const byDomain = items.reduce(
+    (acc, item) => {
+      const domain = item.domain || 'general'
+      if (!acc[domain]) acc[domain] = []
+      acc[domain].push(item)
+      return acc
+    },
+    {} as Record<string, DigestItem[]>
+  )
+
+  const domainSummary = Object.entries(byDomain)
+    .map(([domain, domainItems]) => `- ${domain}: ${domainItems.length} item(s)`)
+    .join('\n')
+
+  // Build items JSON for the prompt
+  const itemsJson = JSON.stringify(
+    items.map((item) => ({
+      title: item.title,
+      summary: item.summary,
+      domain: item.domain,
+      type: item.contentType,
+      tags: item.tags,
+    })),
+    null,
+    2
+  )
+
+  const systemPrompt = `You are Imogen, a personal knowledge curator who delivers morning audio digests.
+
+${IMOGEN_SOUL}
+
+## Task
+Generate a spoken script (5-7 minutes when read aloud at 140 wpm = 700-1000 words).
+The script will be converted to audio via text-to-speech, so:
+- Write for the ear, not the eye
+- No markdown, bullets, or formatting
+- Spell out abbreviations on first use
+- Don't read URLs — just reference by name
+
+## Structure
+1. Greeting (use their name: "${userName}")
+2. Continuity hook (if previous digest exists and there's a natural connection)
+3. Overview ("Today you've got X items across Y categories...")
+4. Category blocks (group items, provide narrative transitions)
+5. Closing (brief, genuine)
+
+## Previous Digest Context
+${previousContext}
+
+## Today's Items (${items.length} total)
+Domains breakdown:
+${domainSummary}
+
+Full items:
+${itemsJson}
+
+Generate the script now. Output ONLY the script text, no preamble or meta-commentary.`
+
+  const message = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2000,
+    messages: [
+      {
+        role: 'user',
+        content: systemPrompt,
+      },
+    ],
+  })
+
+  // Extract text from response
+  const textBlock = message.content.find((block) => block.type === 'text')
+  if (!textBlock || textBlock.type !== 'text') {
+    throw new Error('No text response from Claude')
+  }
+
+  return textBlock.text
+}
+
+// Estimate audio duration based on word count
+// Average speaking rate: ~140 words per minute
+export function estimateDuration(script: string): number {
+  const wordCount = script.split(/\s+/).length
+  const minutes = wordCount / 140
+  return Math.ceil(minutes * 60) // Return seconds
+}
