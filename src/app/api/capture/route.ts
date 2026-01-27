@@ -90,27 +90,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to capture' }, { status: 500 })
     }
 
-    // Process synchronously (serverless can't do true background work)
-    // This should complete within Vercel's timeout for GitHub/article sources
-    // TikTok transcription might need a different approach later
-    try {
-      await processItem(item.id)
-    } catch (err) {
-      console.error('Processing error:', err)
-      // Item stays in 'failed' state, but capture still succeeded
-    }
+    // Fire-and-forget: process in background, return immediately
+    // This allows the iOS Shortcut / desktop app to return instantly
+    processItem(item.id).catch(err => {
+      console.error('Background processing error:', err)
+    })
 
-    // Fetch the processed item to return current state
-    const { data: processed } = await supabase
-      .from('items')
-      .select('id, status, title, source_type')
-      .eq('id', item.id)
-      .single()
-
+    // Return immediately - item is captured, processing happens async
     return NextResponse.json({
       id: item.id,
-      status: processed?.status || 'captured',
-      title: processed?.title,
+      status: 'processing',
       source_type: sourceType,
     })
 
