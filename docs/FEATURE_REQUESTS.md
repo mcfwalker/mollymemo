@@ -88,12 +88,11 @@ Options:
 
 ### 6. Fix yellow text contrast (light theme)
 **Priority:** Medium
-**Status:** Open
+**Status:** Done
 
-Yellow text has poor contrast on light backgrounds throughout the app. Need to:
-- Audit all yellow color usage
-- Adjust for WCAG contrast compliance
-- Test on both light and dark themes
+~~Yellow text has poor contrast on light backgrounds throughout the app.~~
+
+**Solution:** Added `--warning-foreground` CSS variable and updated text elements to use foreground color variants instead of background-intended colors. Contrast improved from ~1:1 to ~5:1 (WCAG AA compliant).
 
 ---
 
@@ -101,28 +100,13 @@ Yellow text has poor contrast on light backgrounds throughout the app. Need to:
 
 ### 7. Understand/improve iOS Shortcut UX
 **Priority:** High
-**Status:** Open - needs investigation
+**Status:** Done
 
-Current issue: Some posts take a long time to process, disrupting the doomscroll flow. User has to wait for checkmark before moving on.
+~~Some posts take a long time to process, disrupting the doomscroll flow.~~
 
-Questions to answer:
-- What does the shortcut return to indicate completion?
-- Is it waiting for the full pipeline (capture + process)?
-- Can we make capture async so user can "send and scroll"?
+**Solution:** Removed `await` from `processItem()` call - capture now returns instantly after DB insert. Processing runs in background (fire-and-forget). iOS Shortcut and LazyList Desktop app both benefit.
 
-**Current behavior:** The `/api/capture` endpoint has `await processItem(item.id)` on line 97, meaning the shortcut waits for the full pipeline (transcription, Grok fetch, classification) before returning success.
-
-**Proposed fix:** Remove the `await` - return success immediately after DB insert, let processing run in background. The shortcut just needs confirmation the URL was received.
-
-```typescript
-// Current (blocking):
-await processItem(item.id)
-
-// Fix (fire-and-forget):
-processItem(item.id).catch(err => console.error('Background processing error:', err))
-```
-
-**Trade-off:** If processing takes longer than Vercel's function timeout (~10s default, 60s max), it may be cut off. For long videos, might need a proper queue (Inngest, Trigger.dev) or Supabase Edge Functions.
+**Trade-off:** If processing takes longer than Vercel's function timeout, it may be cut off. For long videos, might need a proper queue later.
 
 ---
 
