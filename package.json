@@ -11,6 +11,7 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.49.1",
     "@tailwindcss/postcss": "^4.1.18",
     "framer-motion": "^12.29.0",
@@ -26,6 +27,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^5.1.2",
     "autoprefixer": "^10.4.23",
+    "dotenv": "^17.2.3",
     "jsdom": "^27.4.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",

@@ -17,7 +17,7 @@ vi.mock('next/server', async () => {
 })
 
 vi.mock('@/lib/supabase', () => ({
-  createServerClient: vi.fn(),
+  createServiceClient: vi.fn(),
 }))
 
 vi.mock('@/lib/processors', () => ({
@@ -30,7 +30,7 @@ vi.mock('@/lib/telegram', () => ({
   extractUrl: vi.fn(),
 }))
 
-import { createServerClient } from '@/lib/supabase'
+import { createServiceClient } from '@/lib/supabase'
 import { processItem } from '@/lib/processors'
 import { sendMessage, getUserByTelegramId, extractUrl } from '@/lib/telegram'
 
@@ -87,8 +87,8 @@ describe('telegram webhook route', () => {
       error: null,
     })
 
-    vi.mocked(createServerClient).mockReturnValue(
-      mockSupabase as unknown as ReturnType<typeof createServerClient>
+    vi.mocked(createServiceClient).mockReturnValue(
+      mockSupabase as unknown as ReturnType<typeof createServiceClient>
     )
     vi.mocked(processItem).mockResolvedValue(undefined)
     vi.mocked(getUserByTelegramId).mockResolvedValue(TEST_USER)

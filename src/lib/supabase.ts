@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
+import { createServerClient as createSSRServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
-// Client for browser (uses anon key)
+// Client for browser (uses anon key) - for client components
 export function createBrowserClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,8 +10,34 @@ export function createBrowserClient() {
   )
 }
 
-// Client for server (uses service role key for full access)
-export function createServerClient() {
+// Client for server with auth session - for route handlers and server components
+export async function createServerClient() {
+  const cookieStore = await cookies()
+
+  return createSSRServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // Called from Server Component - cookies are read-only
+          }
+        },
+      },
+    }
+  )
+}
+
+// Service client for operations that bypass auth (Telegram webhook, background jobs)
+export function createServiceClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!

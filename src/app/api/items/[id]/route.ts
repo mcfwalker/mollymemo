@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase'
+import { createServiceClient } from '@/lib/supabase'
 import { processItem } from '@/lib/processors'
 import { getCurrentUserId } from '@/lib/auth'
 
@@ -13,7 +13,7 @@ export async function GET(
   }
 
   const { id } = await params
-  const supabase = createServerClient()
+  const supabase = createServiceClient()
 
   const { data, error } = await supabase
     .from('items')
@@ -57,7 +57,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
     }
 
-    const supabase = createServerClient()
+    const supabase = createServiceClient()
 
     const { data, error } = await supabase
       .from('items')
@@ -90,7 +90,7 @@ export async function DELETE(
   }
 
   const { id } = await params
-  const supabase = createServerClient()
+  const supabase = createServiceClient()
 
   const { error } = await supabase
     .from('items')
@@ -117,7 +117,7 @@ export async function POST(
   }
 
   const { id } = await params
-  const supabase = createServerClient()
+  const supabase = createServiceClient()
 
   // Verify item exists and belongs to user
   const { data: item, error } = await supabase

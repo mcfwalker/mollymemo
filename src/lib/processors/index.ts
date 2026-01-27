@@ -1,6 +1,6 @@
 // Main processor that orchestrates extraction and classification
 
-import { createServerClient, Item } from '../supabase'
+import { createServiceClient, Item } from '../supabase'
 import { detectSourceType, parseGitHubUrl } from './detect'
 import { processGitHub } from './github'
 import { processTikTok } from './tiktok'
@@ -9,7 +9,7 @@ import { extractReposFromTranscript } from './repo-extractor'
 import { classify } from './classifier'
 
 export async function processItem(itemId: string): Promise<void> {
-  const supabase = createServerClient()
+  const supabase = createServiceClient()
 
   // Get the item
   const { data: item, error: fetchError } = await supabase

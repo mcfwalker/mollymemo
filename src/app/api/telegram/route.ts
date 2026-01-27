@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server'
-import { createServerClient } from '@/lib/supabase'
+import { createServiceClient } from '@/lib/supabase'
 import { detectSourceType } from '@/lib/processors/detect'
 import { processItem } from '@/lib/processors'
 import { sendMessage, getUserByTelegramId, extractUrl } from '@/lib/telegram'
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
-    const supabase = createServerClient()
+    const supabase = createServiceClient()
 
     // Check for recent duplicate (same URL in last 24h for this user)
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()

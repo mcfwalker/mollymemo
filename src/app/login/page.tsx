@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import styles from './page.module.css'
 
@@ -50,11 +50,18 @@ function FloatingTitle() {
 
 function LoginForm() {
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
+  const [sent, setSent] = useState(false)
   const searchParams = useSearchParams()
+
+  // Handle auth errors from callback redirect
+  useEffect(() => {
+    const urlError = searchParams.get('error')
+    if (urlError === 'auth_failed') {
+      setError('Authentication failed. Please try again.')
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,22 +72,35 @@ function LoginForm() {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email }),
       })
 
       if (res.ok) {
-        const from = searchParams.get('from') || '/'
-        router.push(from)
-        router.refresh()
+        setSent(true)
       } else {
         const data = await res.json()
-        setError(data.error || 'Invalid credentials')
+        setError(data.error || 'Failed to send magic link')
       }
     } catch {
       setError('Something went wrong')
     } finally {
       setLoading(false)
     }
+  }
+
+  if (sent) {
+    return (
+      <div className={styles.form}>
+        <p className={styles.success}>Check your email for the magic link</p>
+        <button
+          type="button"
+          className={styles.button}
+          onClick={() => setSent(false)}
+        >
+          try again
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -92,17 +112,11 @@ function LoginForm() {
         onChange={(e) => setEmail(e.target.value)}
         className={styles.input}
         autoFocus
-      />
-      <input
-        type="password"
-        placeholder="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className={styles.input}
+        required
       />
       {error && <p className={styles.error}>{error}</p>}
       <button type="submit" className={styles.button} disabled={loading}>
-        {loading ? '...' : 'enter'}
+        {loading ? '...' : 'send magic link'}
       </button>
     </form>
   )

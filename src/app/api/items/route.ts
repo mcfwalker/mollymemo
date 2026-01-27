@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase'
+import { createServiceClient } from '@/lib/supabase'
 import { sanitizeSearchInput } from '@/lib/security'
 import { getCurrentUserId } from '@/lib/auth'
 
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
   const offset = parseInt(searchParams.get('offset') || '0')
 
-  const supabase = createServerClient()
+  const supabase = createServiceClient()
 
   let query = supabase
     .from('items')

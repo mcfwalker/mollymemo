@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase'
+import { createServiceClient } from '@/lib/supabase'
 
 const TELEGRAM_API = 'https://api.telegram.org/bot'
 
@@ -9,7 +9,7 @@ export interface TelegramUser {
 }
 
 export async function getUserByTelegramId(telegramUserId: number): Promise<TelegramUser | null> {
-  const supabase = createServerClient()
+  const supabase = createServiceClient()
 
   const { data, error } = await supabase
     .from('users')

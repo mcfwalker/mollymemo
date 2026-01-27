@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyPassword, checkRateLimit, generateSessionToken } from '@/lib/security'
+import { checkRateLimit } from '@/lib/security'
 import { createServerClient } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
@@ -20,50 +20,39 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { email, password } = await request.json()
+    const { email } = await request.json()
 
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
+    if (!email) {
+      return NextResponse.json({ error: 'Email required' }, { status: 400 })
     }
 
-    // Look up user by email
-    const supabase = createServerClient()
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('id, password_hash')
-      .eq('email', email.toLowerCase().trim())
-      .single()
-
-    if (error || !user) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
-    }
-
-    // Verify password hash
-    if (!verifyPassword(password, user.password_hash)) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
-    }
-
-    // Generate secure session token with user ID and 30-day expiration
-    const sessionToken = generateSessionToken(user.id, 30 * 24 * 60 * 60 * 1000)
-
-    const response = NextResponse.json({ success: true })
-    response.cookies.set('lazylist_auth', sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-      path: '/',
+    // Send magic link via Supabase Auth
+    const supabase = await createServerClient()
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.toLowerCase().trim(),
+      options: {
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
+      },
     })
 
-    return response
+    if (error) {
+      console.error('Magic link error:', error)
+      return NextResponse.json({ error: 'Failed to send magic link' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, message: 'Check your email for the magic link' })
   } catch {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 }
 
 export async function DELETE() {
-  // Logout - clear the cookie
+  // Logout - sign out from Supabase Auth
+  const supabase = await createServerClient()
+  await supabase.auth.signOut()
+
   const response = NextResponse.json({ success: true })
+  // Clear any legacy cookies
   response.cookies.delete('lazylist_auth')
   return response
 }
