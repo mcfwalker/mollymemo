@@ -1,0 +1,43 @@
+.statsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.statsText {
+  color: var(--text-muted);
+}
+
+.separator {
+  margin: 0 8px;
+  opacity: 0.5;
+}
+
+.historyLink {
+  color: var(--accent-foreground);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.historyLink:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .statsRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .statsText {
+    font-size: 12px;
+  }
+
+  .separator {
+    margin: 0 6px;
+  }
+}

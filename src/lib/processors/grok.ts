@@ -1,8 +1,13 @@
 // Grok API integration for X content and JS-rendered articles
 
+// Grok-4-1-fast pricing (per 1M tokens)
+const GROK_INPUT_PRICE = 3
+const GROK_OUTPUT_PRICE = 15
+
 interface GrokResponse {
   content: string
   citations: string[]
+  cost: number
 }
 
 interface GrokXContent {
@@ -11,6 +16,7 @@ interface GrokXContent {
   authorName: string | null
   summary: string
   citations: string[]
+  cost: number
 }
 
 // Fetch and summarize X content using Grok's x_search tool
@@ -72,6 +78,12 @@ Format your response as JSON:
     const data = await response.json()
     console.log('Grok API raw response:', JSON.stringify(data, null, 2))
 
+    // Calculate cost from usage
+    const usage = data.usage || {}
+    const inputTokens = usage.input_tokens || 0
+    const outputTokens = usage.output_tokens || 0
+    const cost = (inputTokens * GROK_INPUT_PRICE + outputTokens * GROK_OUTPUT_PRICE) / 1_000_000
+
     // Find the assistant message in the output array
     // Output contains tool calls followed by the final message
     const outputArray = data.output || []
@@ -127,6 +139,7 @@ Format your response as JSON:
         authorName: parsed.authorName || null,
         summary: parsed.summary || '',
         citations: allCitations,
+        cost,
       }
     }
 
@@ -136,6 +149,7 @@ Format your response as JSON:
       authorName: null,
       summary: content.slice(0, 200),
       citations,
+      cost,
     }
   } catch (error) {
     console.error('Grok X fetch error:', error)
@@ -196,6 +210,12 @@ Format your response as JSON:
 
     const data = await response.json()
 
+    // Calculate cost from usage
+    const usage = data.usage || {}
+    const inputTokens = usage.input_tokens || 0
+    const outputTokens = usage.output_tokens || 0
+    const cost = (inputTokens * GROK_INPUT_PRICE + outputTokens * GROK_OUTPUT_PRICE) / 1_000_000
+
     // Find the assistant message in the output array
     const outputArray = data.output || []
     const assistantMessage = outputArray.find(
@@ -219,6 +239,7 @@ Format your response as JSON:
     return {
       content,
       citations,
+      cost,
     }
   } catch (error) {
     console.error('Grok article fetch error:', error)

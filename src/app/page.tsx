@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Item } from '@/lib/supabase'
+import { Item, CurrentMonthStats, getCurrentMonthStats, createBrowserClient } from '@/lib/supabase'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { FilterBar } from '@/components/FilterBar'
 import { ItemCard } from '@/components/ItemCard'
+import { StatsRow } from '@/components/StatsRow'
 import styles from './page.module.css'
 
 export default function Home() {
@@ -18,6 +19,8 @@ export default function Home() {
   const [contentType, setContentType] = useState('all')
   const [status, setStatus] = useState('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [costStats, setCostStats] = useState<CurrentMonthStats | null>(null)
+  const [statsLoading, setStatsLoading] = useState(true)
 
   const handleLogout = async () => {
     await fetch('/api/auth', { method: 'DELETE' })
@@ -47,6 +50,22 @@ export default function Home() {
   useEffect(() => {
     fetchItems()
   }, [fetchItems])
+
+  useEffect(() => {
+    async function fetchStats() {
+      setStatsLoading(true)
+      try {
+        const supabase = createBrowserClient()
+        const stats = await getCurrentMonthStats(supabase)
+        setCostStats(stats)
+      } catch (err) {
+        console.error('Error fetching stats:', err)
+      } finally {
+        setStatsLoading(false)
+      }
+    }
+    fetchStats()
+  }, [])
 
   const updateItem = async (id: string, updates: Partial<Item>) => {
     try {
@@ -96,6 +115,8 @@ export default function Home() {
           </button>
         </div>
       </header>
+
+      <StatsRow stats={costStats} loading={statsLoading} />
 
       <FilterBar
         domain={domain}

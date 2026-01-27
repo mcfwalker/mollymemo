@@ -34,6 +34,8 @@ export async function processItem(itemId: string): Promise<void> {
     let transcript: string | undefined
     let githubMetadata: Awaited<ReturnType<typeof processGitHub>> = null
     let extractedEntities: Item['extracted_entities'] = { repos: [], tools: [], techniques: [] }
+    let grokCost = 0
+    let openaiCost = 0
 
     // Process based on source type
     if (sourceType === 'tiktok') {
@@ -64,6 +66,7 @@ export async function processItem(itemId: string): Promise<void> {
       if (!xData) {
         throw new Error('X/Twitter fetch failed')
       }
+      grokCost = xData.grokCost
       // Use tweet text + video transcript for classification
       if (xData.videoTranscript) {
         transcript = `[Post]: ${xData.text}\n\n[Video Transcript]: ${xData.videoTranscript}`
@@ -101,6 +104,8 @@ export async function processItem(itemId: string): Promise<void> {
             content_type: 'resource',
             extracted_entities: { repos: [], tools: [], techniques: [] },
             raw_data: { xData, xArticleUrl: xData.xArticleUrl },
+            openai_cost: null,
+            grok_cost: grokCost || null,
           }
           await supabase.from('items').update(updates).eq('id', itemId)
           return // Skip further processing
@@ -167,6 +172,10 @@ export async function processItem(itemId: string): Promise<void> {
       githubMetadata: githubMetadata || undefined,
     })
 
+    if (classification) {
+      openaiCost = classification.cost
+    }
+
     // Update the item with all extracted data
     const updates: Partial<Item> = {
       status: 'processed',
@@ -177,6 +186,8 @@ export async function processItem(itemId: string): Promise<void> {
         githubMetadata,
         transcript,
       },
+      openai_cost: openaiCost || null,
+      grok_cost: grokCost || null,
     }
 
     if (classification) {

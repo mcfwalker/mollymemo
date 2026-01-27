@@ -14,6 +14,7 @@ interface XMetadata {
   summary: string | null
   grokCitations: string[]
   usedGrok: boolean
+  grokCost: number
 }
 
 // Fallback: oembed API (limited but no auth required)
@@ -81,6 +82,7 @@ async function processXWithOembed(url: string): Promise<XMetadata | null> {
       summary: null,
       grokCitations: [],
       usedGrok: false,
+      grokCost: 0,
     }
   } catch (error) {
     console.error('X oembed error:', error)
@@ -110,6 +112,7 @@ async function processXWithGrok(url: string): Promise<XMetadata | null> {
     summary: grokResult.summary,
     grokCitations: grokResult.citations,
     usedGrok: true,
+    grokCost: grokResult.cost,
   }
 }
 

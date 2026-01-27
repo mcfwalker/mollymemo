@@ -93,6 +93,7 @@ describe('grok.ts', () => {
           'https://github.com/owner/repo1',
           'https://github.com/owner/repo2',
         ],
+        cost: 0,
       })
     })
 
@@ -154,6 +155,7 @@ describe('grok.ts', () => {
         authorName: null,
         summary: 'This is plain text content without JSON',
         citations: ['https://cited.com'],
+        cost: 0,
       })
     })
 
@@ -173,6 +175,7 @@ describe('grok.ts', () => {
         authorName: null,
         summary: '',
         citations: [],
+        cost: 0,
       })
     })
 
@@ -245,6 +248,38 @@ describe('grok.ts', () => {
 
       // Should be deduplicated
       expect(result?.citations.filter(c => c === 'https://github.com/owner/repo')).toHaveLength(1)
+    })
+
+    it('calculates cost from usage data', async () => {
+      const grokResponse = {
+        output: [
+          {
+            type: 'message',
+            role: 'assistant',
+            content: [
+              {
+                type: 'output_text',
+                text: JSON.stringify({ fullText: 'Content', summary: 'Summary' }),
+                annotations: [],
+              },
+            ],
+          },
+        ],
+        usage: {
+          input_tokens: 1000,
+          output_tokens: 500,
+        },
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => grokResponse,
+      })
+
+      const result = await fetchXContentWithGrok('https://x.com/test/status/123')
+
+      // Cost = (1000 * 3 + 500 * 15) / 1_000_000 = (3000 + 7500) / 1_000_000 = 0.0105
+      expect(result?.cost).toBeCloseTo(0.0105, 6)
     })
 
     it('sends correct request to Grok API', async () => {
@@ -326,6 +361,7 @@ describe('grok.ts', () => {
       expect(result).toEqual({
         content: 'Article summary content',
         citations: ['https://source1.com', 'https://source2.com'],
+        cost: 0,
       })
     })
 
@@ -356,6 +392,7 @@ describe('grok.ts', () => {
       expect(result).toEqual({
         content: 'Article content',
         citations: [],
+        cost: 0,
       })
     })
 

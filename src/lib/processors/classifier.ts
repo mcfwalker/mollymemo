@@ -8,7 +8,12 @@ interface ClassificationResult {
   domain: string
   content_type: string
   tags: string[]
+  cost: number
 }
+
+// GPT-4o-mini pricing (per 1M tokens)
+const OPENAI_INPUT_PRICE = 0.15
+const OPENAI_OUTPUT_PRICE = 0.60
 
 export async function classify(content: {
   sourceType: string
@@ -94,6 +99,12 @@ Return ONLY valid JSON, no markdown or explanation.`
       return null
     }
 
+    // Calculate cost from usage
+    const usage = data.usage || {}
+    const inputTokens = usage.prompt_tokens || 0
+    const outputTokens = usage.completion_tokens || 0
+    const cost = (inputTokens * OPENAI_INPUT_PRICE + outputTokens * OPENAI_OUTPUT_PRICE) / 1_000_000
+
     // Parse JSON (handle potential markdown code blocks)
     const jsonStr = text.replace(/```json\n?|\n?```/g, '').trim()
     const result = JSON.parse(jsonStr)
@@ -108,6 +119,7 @@ Return ONLY valid JSON, no markdown or explanation.`
       domain: returnedDomain,
       content_type: result.content_type || 'resource',
       tags: result.tags || [],
+      cost,
     }
   } catch (error) {
     console.error('Classification error:', error)
