@@ -39,11 +39,9 @@
   }
 }
 
-.title {
-  font-family: 'Mamoth', sans-serif;
-  font-size: 28px;
-  font-weight: normal;
-  color: var(--text);
+.logo {
+  height: 32px;
+  width: auto;
 }
 
 .search {

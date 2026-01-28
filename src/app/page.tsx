@@ -113,7 +113,7 @@ export default function Home() {
   return (
     <main className={styles.main}>
       <header className={styles.header}>
-        <h1 className={styles.title}>lazylist</h1>
+        <img src="/molly_sig_1.svg" alt="MollyMemo" className={styles.logo} />
         <div className={styles.headerRight}>
           <input
             type="text"
