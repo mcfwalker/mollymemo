@@ -1,4 +1,4 @@
-# LazyList Feature Backlog
+# MollyMemo Feature Backlog
 
 ## Voice Digest Enhancements
 
@@ -6,7 +6,7 @@
 **Priority:** Medium
 **Complexity:** High
 
-Evolve Imogen's memory beyond the simple `imogen_context` field:
+Evolve Molly's memory beyond the simple `molly_context` field:
 
 - Embed past digests and items using OpenAI embeddings
 - Store in Supabase pgvector
@@ -57,7 +57,7 @@ Observability for digest quality:
 When items exceed ~500:
 - Embed items on capture
 - pgvector similarity search
-- Power both LazyList skill and digest references
+- Power both MollyMemo skill and digest references
 
 ### Smart Deduplication
 **Priority:** Low
@@ -85,7 +85,28 @@ Extract from YouTube URLs:
 **Priority:** Low
 **Complexity:** High
 
-Forward emails to LazyList:
+Forward emails to MollyMemo:
 - Parse email content
 - Extract links
 - Summarize key points
+
+---
+
+## Infrastructure
+
+### Distributed Rate Limiting
+**Priority:** Low
+**Complexity:** Low
+
+Replace in-memory rate limiting with Upstash Redis:
+- Persist across cold starts
+- Scale across multiple instances
+
+### Error Monitoring
+**Priority:** Medium
+**Complexity:** Low
+
+Add Sentry or similar:
+- Track runtime errors
+- Alert on anomalies
+- Performance monitoring
