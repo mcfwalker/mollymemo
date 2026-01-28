@@ -220,6 +220,21 @@ export async function processItem(itemId: string): Promise<void> {
           if (!githubMetadata) {
             githubMetadata = gh
           }
+          // Correct title if it was a transcription error
+          // e.g., "Inc" -> "Ink" based on actual repo name
+          if (
+            classification.title.toLowerCase() !== gh.name.toLowerCase() &&
+            classification.title.toLowerCase().replace(/[^a-z]/g, '') ===
+            gh.name.toLowerCase().replace(/[^a-z]/g, '')
+          ) {
+            // Names are similar but different (likely transcription error)
+            console.log(`Correcting title: "${classification.title}" -> "${gh.name}"`)
+            classification.title = gh.name
+          } else if (classification.title.length <= 10) {
+            // Short title that's likely just the tool name - use repo name
+            console.log(`Using repo name as title: "${gh.name}"`)
+            classification.title = gh.name
+          }
         }
       }
     }
