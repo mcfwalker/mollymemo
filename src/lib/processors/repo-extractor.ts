@@ -197,6 +197,52 @@ Respond with ONLY "yes" or "no".`
   }
 }
 
+// Second pass: use title + summary to find repos that initial extraction missed
+// This catches transcription errors like "Inc" -> "Ink"
+export async function extractReposFromSummary(
+  title: string,
+  summary: string,
+  existingRepoUrls: string[] = []
+): Promise<GitHubRepoInfo[]> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    console.error('OPENAI_API_KEY not configured for repo extraction')
+    return []
+  }
+
+  // Combine title and summary for search
+  const searchQuery = `${title} ${summary}`
+  console.log('Second pass repo search with summary:', searchQuery.slice(0, 100))
+
+  // Search GitHub directly with the summary
+  const repo = await searchGitHubRepo(title, summary)
+  if (!repo) {
+    console.log('No repo found in second pass')
+    return []
+  }
+
+  // Skip if already extracted
+  if (existingRepoUrls.some(url => url.includes(repo.fullName))) {
+    console.log(`Skipping ${repo.fullName} - already extracted`)
+    return []
+  }
+
+  // Validate: does this repo match what the summary describes?
+  const isMatch = await validateRepoMatch(
+    `Title: ${title}\nSummary: ${summary}`,
+    title,
+    repo,
+    apiKey
+  )
+  console.log(`Second pass validation for ${title} -> ${repo.fullName}: ${isMatch}`)
+
+  if (isMatch) {
+    return [repo]
+  }
+
+  return []
+}
+
 // Main function: extract repos from transcript with validation
 export async function extractReposFromTranscript(
   transcript: string,

@@ -7,7 +7,7 @@ import { processTikTok } from './tiktok'
 import { processX } from './x'
 // Dynamic import to avoid JSDOM ESM issues on Vercel
 // import { processArticle } from './article'
-import { extractReposFromTranscript } from './repo-extractor'
+import { extractReposFromTranscript, extractReposFromSummary } from './repo-extractor'
 import { classify } from './classifier'
 
 export async function processItem(itemId: string): Promise<void> {
@@ -197,6 +197,31 @@ export async function processItem(itemId: string): Promise<void> {
 
     if (classification) {
       openaiCost = classification.cost
+    }
+
+    // Second pass: if no repos found but we have a title/summary, try again
+    // This catches transcription errors like "Inc" -> "Ink"
+    if (
+      classification &&
+      extractedEntities.repos?.length === 0 &&
+      classification.title &&
+      classification.summary
+    ) {
+      console.log('No repos found, running second pass with summary...')
+      const summaryRepos = await extractReposFromSummary(
+        classification.title,
+        classification.summary,
+        extractedEntities.repos || []
+      )
+      for (const repo of summaryRepos.slice(0, 3)) {
+        const gh = await processGitHub(repo.url)
+        if (gh) {
+          extractedEntities.repos?.push(repo.url)
+          if (!githubMetadata) {
+            githubMetadata = gh
+          }
+        }
+      }
     }
 
     // Update the item with all extracted data
