@@ -9,32 +9,45 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createServiceClient()
-  const now = new Date()
-  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  const daysElapsed = now.getDate()
 
-  // Get items with costs for current month
-  const { data, error } = await supabase
+  // Get all items with any cost (all-time)
+  const { data: itemsData, error: itemsError } = await supabase
     .from('items')
-    .select('openai_cost, grok_cost')
+    .select('openai_cost, grok_cost, repo_extraction_cost')
     .eq('user_id', userId)
-    .gte('captured_at', firstOfMonth.toISOString())
-    .or('openai_cost.not.is.null,grok_cost.not.is.null')
+    .or('openai_cost.not.is.null,grok_cost.not.is.null,repo_extraction_cost.not.is.null')
 
-  if (error) {
-    console.error('Error fetching stats:', error)
+  if (itemsError) {
+    console.error('Error fetching item stats:', itemsError)
     return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 })
   }
 
-  const allData = data || []
-  const entryCount = allData.length
-  const totalCost = allData.reduce((sum, item) => {
-    return sum + (item.openai_cost || 0) + (item.grok_cost || 0)
+  // Get all digests with costs (all-time)
+  const { data: digestsData, error: digestsError } = await supabase
+    .from('digests')
+    .select('anthropic_cost, tts_cost')
+    .eq('user_id', userId)
+    .or('anthropic_cost.not.is.null,tts_cost.not.is.null')
+
+  if (digestsError) {
+    console.error('Error fetching digest stats:', digestsError)
+    return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 })
+  }
+
+  const items = itemsData || []
+  const digests = digestsData || []
+
+  const entryCount = items.length
+  const itemCost = items.reduce((sum, item) => {
+    return sum + (item.openai_cost || 0) + (item.grok_cost || 0) + (item.repo_extraction_cost || 0)
   }, 0)
-  const avgCost = entryCount > 0 ? totalCost / entryCount : 0
+  const digestCost = digests.reduce((sum, digest) => {
+    return sum + (digest.anthropic_cost || 0) + (digest.tts_cost || 0)
+  }, 0)
+  const totalCost = itemCost + digestCost
+  const avgCost = entryCount > 0 ? itemCost / entryCount : 0
 
   return NextResponse.json({
-    daysElapsed,
     entryCount,
     totalCost,
     avgCost,

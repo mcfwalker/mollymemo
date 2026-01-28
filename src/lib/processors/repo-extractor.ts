@@ -1,6 +1,14 @@
 // Shared smart repo extraction logic
 // Extracts candidate names from transcript, searches GitHub, validates matches
 
+// GPT-4o-mini pricing per million tokens
+const GPT4O_MINI_INPUT_COST = 0.15 / 1_000_000
+const GPT4O_MINI_OUTPUT_COST = 0.60 / 1_000_000
+
+function calculateOpenAICost(inputTokens: number, outputTokens: number): number {
+  return inputTokens * GPT4O_MINI_INPUT_COST + outputTokens * GPT4O_MINI_OUTPUT_COST
+}
+
 export interface GitHubRepoInfo {
   url: string
   name: string
@@ -19,7 +27,7 @@ export interface CandidateRepo {
 export async function extractCandidateNames(
   transcript: string,
   apiKey: string
-): Promise<CandidateRepo[]> {
+): Promise<{ candidates: CandidateRepo[]; cost: number }> {
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -57,10 +65,14 @@ ${transcript.slice(0, 3000)}`
 
     if (!response.ok) {
       console.error('AI extraction error:', response.status)
-      return []
+      return { candidates: [], cost: 0 }
     }
 
     const data = await response.json()
+    const cost = calculateOpenAICost(
+      data.usage?.prompt_tokens || 0,
+      data.usage?.completion_tokens || 0
+    )
     const text = data.choices?.[0]?.message?.content?.trim() || '[]'
     const jsonStr = text.replace(/```json\n?|\n?```/g, '').trim()
     const parsed = JSON.parse(jsonStr)
@@ -68,14 +80,14 @@ ${transcript.slice(0, 3000)}`
     // Handle both old format (string[]) and new format (CandidateRepo[])
     if (Array.isArray(parsed) && parsed.length > 0) {
       if (typeof parsed[0] === 'string') {
-        return parsed.map((name: string) => ({ name, context: '' }))
+        return { candidates: parsed.map((name: string) => ({ name, context: '' })), cost }
       }
-      return parsed
+      return { candidates: parsed, cost }
     }
-    return []
+    return { candidates: [], cost }
   } catch (error) {
     console.error('Candidate name extraction error:', error)
-    return []
+    return { candidates: [], cost: 0 }
   }
 }
 
@@ -147,12 +159,12 @@ export async function selectBestRepo(
   candidates: GitHubRepoInfo[],
   context: string,
   apiKey: string
-): Promise<GitHubRepoInfo | null> {
-  if (candidates.length === 0) return null
+): Promise<{ repo: GitHubRepoInfo | null; cost: number }> {
+  if (candidates.length === 0) return { repo: null, cost: 0 }
   if (candidates.length === 1) {
     // Still validate single candidate
-    const isMatch = await validateRepoMatch(context, '', candidates[0], apiKey)
-    return isMatch ? candidates[0] : null
+    const { isMatch, cost } = await validateRepoMatch(context, '', candidates[0], apiKey)
+    return { repo: isMatch ? candidates[0] : null, cost }
   }
 
   try {
@@ -191,23 +203,27 @@ Instructions:
 
     if (!response.ok) {
       console.error('LLM selection error:', response.status)
-      return null
+      return { repo: null, cost: 0 }
     }
 
     const data = await response.json()
+    const cost = calculateOpenAICost(
+      data.usage?.prompt_tokens || 0,
+      data.usage?.completion_tokens || 0
+    )
     const answer = data.choices?.[0]?.message?.content?.trim() || '0'
     const selection = parseInt(answer, 10)
 
     console.log(`LLM selected repo: ${answer} from ${candidates.length} candidates`)
 
     if (selection >= 1 && selection <= candidates.length) {
-      return candidates[selection - 1]
+      return { repo: candidates[selection - 1], cost }
     }
 
-    return null
+    return { repo: null, cost }
   } catch (error) {
     console.error('LLM selection error:', error)
-    return null
+    return { repo: null, cost: 0 }
   }
 }
 
@@ -215,15 +231,15 @@ Instructions:
 export async function searchGitHubRepo(
   name: string,
   context: string = ''
-): Promise<GitHubRepoInfo | null> {
+): Promise<{ repo: GitHubRepoInfo | null; cost: number }> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     console.error('OPENAI_API_KEY not configured for repo selection')
-    return null
+    return { repo: null, cost: 0 }
   }
 
   const candidates = await searchGitHubRepoCandidates(name, context)
-  if (candidates.length === 0) return null
+  if (candidates.length === 0) return { repo: null, cost: 0 }
 
   const searchContext = context ? `Looking for: ${name} - ${context}` : `Looking for: ${name}`
   return selectBestRepo(candidates, searchContext, apiKey)
@@ -235,7 +251,7 @@ export async function validateRepoMatch(
   candidateName: string,
   repo: GitHubRepoInfo,
   apiKey: string
-): Promise<boolean> {
+): Promise<{ isMatch: boolean; cost: number }> {
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -274,15 +290,19 @@ Respond with ONLY "yes" or "no".`
 
     if (!response.ok) {
       console.error('Validation error:', response.status)
-      return false
+      return { isMatch: false, cost: 0 }
     }
 
     const data = await response.json()
+    const cost = calculateOpenAICost(
+      data.usage?.prompt_tokens || 0,
+      data.usage?.completion_tokens || 0
+    )
     const answer = data.choices?.[0]?.message?.content?.trim().toLowerCase() || ''
-    return answer === 'yes'
+    return { isMatch: answer === 'yes', cost }
   } catch (error) {
     console.error('Repo validation error:', error)
-    return false
+    return { isMatch: false, cost: 0 }
   }
 }
 
@@ -292,11 +312,11 @@ export async function extractReposFromSummary(
   title: string,
   summary: string,
   existingRepoUrls: string[] = []
-): Promise<GitHubRepoInfo[]> {
+): Promise<{ repos: GitHubRepoInfo[]; cost: number }> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     console.error('OPENAI_API_KEY not configured for repo extraction')
-    return []
+    return { repos: [], cost: 0 }
   }
 
   console.log('Second pass repo search with summary:', `${title} ${summary}`.slice(0, 100))
@@ -305,7 +325,7 @@ export async function extractReposFromSummary(
   const candidates = await searchGitHubRepoCandidates(title, summary, 5)
   if (candidates.length === 0) {
     console.log('No repo candidates found in second pass')
-    return []
+    return { repos: [], cost: 0 }
   }
 
   // Filter out already extracted repos
@@ -314,41 +334,44 @@ export async function extractReposFromSummary(
   )
   if (newCandidates.length === 0) {
     console.log('All candidates already extracted')
-    return []
+    return { repos: [], cost: 0 }
   }
 
   console.log(`Second pass found ${newCandidates.length} candidates:`, newCandidates.map(c => c.fullName))
 
   // LLM selects the best match based on context
   const context = `Title: ${title}\nDescription: ${summary}`
-  const selected = await selectBestRepo(newCandidates, context, apiKey)
+  const { repo: selected, cost } = await selectBestRepo(newCandidates, context, apiKey)
 
   if (selected) {
     console.log(`Second pass selected: ${selected.fullName}`)
-    return [selected]
+    return { repos: [selected], cost }
   }
 
   console.log('Second pass: LLM found no matching repo')
-  return []
+  return { repos: [], cost }
 }
 
 // Main function: extract repos from transcript with LLM selection
 export async function extractReposFromTranscript(
   transcript: string,
   existingRepoUrls: string[] = []
-): Promise<GitHubRepoInfo[]> {
+): Promise<{ repos: GitHubRepoInfo[]; cost: number }> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     console.error('OPENAI_API_KEY not configured for repo extraction')
-    return []
+    return { repos: [], cost: 0 }
   }
 
+  let totalCost = 0
+
   // Extract candidate names with context
-  const candidates = await extractCandidateNames(transcript, apiKey)
+  const { candidates, cost: extractionCost } = await extractCandidateNames(transcript, apiKey)
+  totalCost += extractionCost
   console.log('Repo extraction candidates:', candidates)
 
   if (candidates.length === 0) {
-    return []
+    return { repos: [], cost: totalCost }
   }
 
   const validatedRepos: GitHubRepoInfo[] = []
@@ -368,7 +391,8 @@ export async function extractReposFromTranscript(
 
     // LLM selects the best match
     const context = `Transcript mentioning "${candidate.name}":\n${transcript.slice(0, 1500)}\n\nLooking for: ${candidate.name} - ${candidate.context}`
-    const selected = await selectBestRepo(newCandidates, context, apiKey)
+    const { repo: selected, cost: selectionCost } = await selectBestRepo(newCandidates, context, apiKey)
+    totalCost += selectionCost
 
     if (selected) {
       console.log(`Selected ${selected.fullName} for candidate "${candidate.name}"`)
@@ -376,5 +400,5 @@ export async function extractReposFromTranscript(
     }
   }
 
-  return validatedRepos
+  return { repos: validatedRepos, cost: totalCost }
 }

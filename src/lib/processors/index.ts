@@ -38,6 +38,7 @@ export async function processItem(itemId: string): Promise<void> {
     let extractedEntities: Item['extracted_entities'] = { repos: [], tools: [], techniques: [] }
     let grokCost = 0
     let openaiCost = 0
+    let repoExtractionCost = 0
 
     // Process based on source type
     if (sourceType === 'tiktok') {
@@ -46,6 +47,7 @@ export async function processItem(itemId: string): Promise<void> {
         throw new Error('TikTok transcription failed - no transcript returned')
       }
       transcript = result.transcript
+      repoExtractionCost += result.repoExtractionCost
 
       // Process any GitHub URLs found in the transcript
       for (const url of result.extractedUrls.slice(0, 3)) { // Limit to 3
@@ -151,7 +153,8 @@ export async function processItem(itemId: string): Promise<void> {
       if (transcript && extractedEntities.repos?.length === 0) {
         console.log('No repos found via Grok/oembed, running smart extraction...')
         const existingUrls = extractedEntities.repos || []
-        const smartRepos = await extractReposFromTranscript(transcript, existingUrls)
+        const { repos: smartRepos, cost: smartCost } = await extractReposFromTranscript(transcript, existingUrls)
+        repoExtractionCost += smartCost
         for (const repo of smartRepos.slice(0, 3)) {
           if (!extractedEntities.repos?.includes(repo.url)) {
             const gh = await processGitHub(repo.url)
@@ -208,11 +211,12 @@ export async function processItem(itemId: string): Promise<void> {
       classification.summary
     ) {
       console.log('No repos found, running second pass with summary...')
-      const summaryRepos = await extractReposFromSummary(
+      const { repos: summaryRepos, cost: summaryCost } = await extractReposFromSummary(
         classification.title,
         classification.summary,
         extractedEntities.repos || []
       )
+      repoExtractionCost += summaryCost
       for (const repo of summaryRepos.slice(0, 3)) {
         const gh = await processGitHub(repo.url)
         if (gh) {
@@ -252,6 +256,7 @@ export async function processItem(itemId: string): Promise<void> {
       },
       openai_cost: openaiCost || null,
       grok_cost: grokCost || null,
+      repo_extraction_cost: repoExtractionCost || null,
     }
 
     if (classification) {

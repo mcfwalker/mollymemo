@@ -30,9 +30,18 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
     // Send "nothing new" message
     console.log(`No items for user ${user.id}, sending empty day message`)
     const script = EMPTY_DAY_SCRIPT(user.display_name || 'there')
-    const audioBuffer = await textToSpeech(script)
+    const { audio: audioBuffer, cost: ttsCost } = await textToSpeech(script)
     const duration = estimateDuration(script)
     await sendVoiceMessage(user.telegram_user_id, audioBuffer, duration)
+    // Store empty day digest with TTS cost only
+    await supabase.from('digests').insert({
+      user_id: user.id,
+      script_text: script,
+      item_ids: [],
+      item_count: 0,
+      anthropic_cost: null,
+      tts_cost: ttsCost,
+    })
     return
   }
 
@@ -43,7 +52,8 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
 
   // 3. Generate script
   console.log('Generating script with Claude...')
-  const script = await generateScript({
+  let anthropicCost = 0
+  const { script, cost: scriptCost } = await generateScript({
     user: {
       id: user.id,
       displayName: user.display_name,
@@ -53,12 +63,13 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
     items,
     previousDigest,
   })
+  anthropicCost += scriptCost
 
   console.log(`Script generated: ${script.split(/\s+/).length} words`)
 
   // 4. Convert to audio
   console.log('Converting to audio with OpenAI TTS...')
-  const audioBuffer = await textToSpeech(script)
+  const { audio: audioBuffer, cost: ttsCost } = await textToSpeech(script)
   const duration = estimateDuration(script)
 
   console.log(`Audio generated: ${audioBuffer.length} bytes, ~${duration}s`)
@@ -75,14 +86,20 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
   console.log(`Voice message sent, file_id: ${result.fileId}`)
 
   // 6. Store digest record
-  const { error: insertError } = await supabase.from('digests').insert({
-    user_id: user.id,
-    script_text: script,
-    telegram_file_id: result.fileId,
-    item_ids: items.map((i) => i.id),
-    item_count: items.length,
-    previous_digest_id: previousDigest?.id || null,
-  })
+  const { data: insertedDigest, error: insertError } = await supabase
+    .from('digests')
+    .insert({
+      user_id: user.id,
+      script_text: script,
+      telegram_file_id: result.fileId,
+      item_ids: items.map((i) => i.id),
+      item_count: items.length,
+      previous_digest_id: previousDigest?.id || null,
+      anthropic_cost: anthropicCost,
+      tts_cost: ttsCost,
+    })
+    .select('id')
+    .single()
 
   if (insertError) {
     console.error('Failed to store digest record:', insertError)
@@ -93,16 +110,25 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
   // 7. Update Imogen's context/memory about this user
   console.log('Updating Imogen context...')
   try {
-    const newContext = await updateUserContext(
+    const { context: newContext, cost: contextCost } = await updateUserContext(
       user.imogen_context,
       items,
       user.display_name || 'this user'
     )
+    anthropicCost += contextCost
     await supabase
       .from('users')
       .update({ imogen_context: newContext })
       .eq('id', user.id)
     console.log('Imogen context updated')
+
+    // Update digest with final anthropic cost (includes context update)
+    if (insertedDigest?.id) {
+      await supabase
+        .from('digests')
+        .update({ anthropic_cost: anthropicCost })
+        .eq('id', insertedDigest.id)
+    }
   } catch (e) {
     console.error('Failed to update Imogen context:', e)
     // Non-fatal, continue

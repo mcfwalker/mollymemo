@@ -5,6 +5,7 @@ import { extractReposFromTranscript } from './repo-extractor'
 interface TikTokResult {
   transcript: string
   extractedUrls: string[]
+  repoExtractionCost: number
 }
 
 // Get direct video URL from TikTok using tikwm API
@@ -105,14 +106,17 @@ export async function processTikTok(url: string): Promise<TikTokResult | null> {
 
     // Step 4: If no explicit URLs, use smart extraction
     let extractedUrls = explicitUrls
+    let repoExtractionCost = 0
     if (explicitUrls.length === 0) {
-      const repos = await extractReposFromTranscript(transcript)
+      const { repos, cost } = await extractReposFromTranscript(transcript)
       extractedUrls = repos.map(r => r.url)
+      repoExtractionCost = cost
     }
 
     return {
       transcript,
       extractedUrls,
+      repoExtractionCost,
     }
   } catch (error) {
     console.error('TikTok processing error:', error)

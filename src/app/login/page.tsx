@@ -86,28 +86,20 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <main className={styles.main}>
-      {/* Ambient background elements */}
-      <div className={styles.ambientOrb1} />
-      <div className={styles.ambientOrb2} />
-
       <motion.div
         className={styles.glassCard}
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0, scale: 0.98, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{
-          duration: 0.6,
+          duration: 0.4,
           ease: [0.22, 1, 0.36, 1]
         }}
       >
-        {/* Inner glass highlight */}
-        <div className={styles.glassHighlight} />
-
-        {/* Photo section */}
         <motion.div
           className={styles.photoSection}
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.15 }}
         >
           <img
             src="/login-photo.jpg"
@@ -116,12 +108,11 @@ export default function LoginPage() {
           />
         </motion.div>
 
-        {/* Form section */}
         <motion.div
           className={styles.formWrapper}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
         >
           <Suspense fallback={<div className={styles.formSection} />}>
             <LoginForm />
@@ -129,12 +120,11 @@ export default function LoginPage() {
         </motion.div>
       </motion.div>
 
-      {/* Branding */}
       <motion.div
         className={styles.branding}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
+        transition={{ duration: 0.3, delay: 0.35 }}
       >
         lazylist
       </motion.div>

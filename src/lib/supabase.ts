@@ -85,6 +85,7 @@ export interface Item {
   raw_data: Record<string, unknown> | null
   openai_cost: number | null
   grok_cost: number | null
+  repo_extraction_cost: number | null
 }
 
 // Cost statistics types
@@ -97,47 +98,49 @@ export interface MonthStats {
   avgCost: number
 }
 
-export interface CurrentMonthStats {
-  daysElapsed: number
+export interface AllTimeStats {
   entryCount: number
   totalCost: number
   avgCost: number
 }
 
-// Get current month statistics for the stats row
-export async function getCurrentMonthStats(supabase: ReturnType<typeof createBrowserClient>): Promise<CurrentMonthStats> {
-  const now = new Date()
-  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  const daysElapsed = now.getDate()
-
-  const { data, error } = await supabase
+// Get all-time statistics for the stats row
+export async function getAllTimeStats(supabase: ReturnType<typeof createBrowserClient>): Promise<AllTimeStats> {
+  // Get all items with any cost
+  const { data: itemsData, error: itemsError } = await supabase
     .from('items')
-    .select('openai_cost, grok_cost')
-    .gte('captured_at', firstOfMonth.toISOString())
-    .not('openai_cost', 'is', null)
+    .select('openai_cost, grok_cost, repo_extraction_cost')
+    .or('openai_cost.not.is.null,grok_cost.not.is.null,repo_extraction_cost.not.is.null')
 
-  if (error || !data) {
-    console.error('Error fetching current month stats:', error)
-    return { daysElapsed, entryCount: 0, totalCost: 0, avgCost: 0 }
+  if (itemsError) {
+    console.error('Error fetching item stats:', itemsError)
+    return { entryCount: 0, totalCost: 0, avgCost: 0 }
   }
 
-  // Include items with grok_cost but no openai_cost too
-  const { data: grokOnlyData } = await supabase
-    .from('items')
-    .select('openai_cost, grok_cost')
-    .gte('captured_at', firstOfMonth.toISOString())
-    .is('openai_cost', null)
-    .not('grok_cost', 'is', null)
+  // Get all digests with costs
+  const { data: digestsData, error: digestsError } = await supabase
+    .from('digests')
+    .select('anthropic_cost, tts_cost')
+    .or('anthropic_cost.not.is.null,tts_cost.not.is.null')
 
-  const allData = [...data, ...(grokOnlyData || [])]
+  if (digestsError) {
+    console.error('Error fetching digest stats:', digestsError)
+  }
 
-  const entryCount = allData.length
-  const totalCost = allData.reduce((sum, item) => {
-    return sum + (item.openai_cost || 0) + (item.grok_cost || 0)
+  const items = itemsData || []
+  const digests = digestsData || []
+
+  const entryCount = items.length
+  const itemCost = items.reduce((sum, item) => {
+    return sum + (item.openai_cost || 0) + (item.grok_cost || 0) + (item.repo_extraction_cost || 0)
   }, 0)
-  const avgCost = entryCount > 0 ? totalCost / entryCount : 0
+  const digestCost = digests.reduce((sum, digest) => {
+    return sum + (digest.anthropic_cost || 0) + (digest.tts_cost || 0)
+  }, 0)
+  const totalCost = itemCost + digestCost
+  const avgCost = entryCount > 0 ? itemCost / entryCount : 0
 
-  return { daysElapsed, entryCount, totalCost, avgCost }
+  return { entryCount, totalCost, avgCost }
 }
 
 // Get monthly breakdown for the history page

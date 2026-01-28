@@ -1,75 +1,27 @@
-/* Warm cream backdrop */
 .main {
   position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #FBF5F0;
+  background: var(--background);
   padding: 20px;
   box-sizing: border-box;
   overflow: hidden;
 }
 
-/* Ambient orbs for depth */
-.ambientOrb1 {
-  position: absolute;
-  width: 600px;
-  height: 600px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 200, 170, 0.3) 0%, transparent 70%);
-  top: -200px;
-  right: -100px;
-  pointer-events: none;
-}
-
-.ambientOrb2 {
-  position: absolute;
-  width: 500px;
-  height: 500px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(200, 180, 220, 0.2) 0%, transparent 70%);
-  bottom: -150px;
-  left: -100px;
-  pointer-events: none;
-}
-
-/* Liquid glass card */
+/* Card */
 .glassCard {
   position: relative;
   display: flex;
   align-items: stretch;
-  background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 32px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
   padding: 16px;
   gap: 8px;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.08),
-    0 2px 8px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.02);
   max-width: 520px;
   width: 100%;
-}
-
-/* Inner highlight for glass depth */
-.glassHighlight {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border-radius: 32px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.4) 0%,
-    transparent 50%,
-    rgba(255, 255, 255, 0.1) 100%
-  );
-  pointer-events: none;
 }
 
 /* Photo section */
@@ -78,12 +30,9 @@
   flex-shrink: 0;
   width: 200px;
   height: 220px;
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.3);
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.06),
-    0 1px 2px rgba(255, 255, 255, 0.8);
+  background: var(--muted);
 }
 
 .photo {
@@ -111,72 +60,59 @@
   padding: 20px;
 }
 
-/* Input fields - pill shaped, glass effect */
+/* Input fields */
 .input {
-  padding: 16px 24px;
+  padding: 14px 20px;
   font-size: 15px;
   font-family: inherit;
-  letter-spacing: 0.02em;
-  border: none;
-  border-radius: 50px;
-  background: rgba(255, 255, 255, 0.85);
-  color: #3d3d3d;
+  letter-spacing: 0.01em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--background);
+  color: var(--foreground);
   text-align: center;
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.04),
-    0 1px 2px rgba(255, 255, 255, 0.9);
-  transition: all 0.2s ease;
+  transition: border-color 0.15s ease;
 }
 
 .input:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.06),
-    0 0 0 3px rgba(200, 180, 160, 0.3);
+  border-color: var(--ring);
 }
 
 .input::placeholder {
-  color: #a0a0a0;
+  color: var(--muted-foreground);
 }
 
-/* Button - pill shaped */
+/* Button */
 .button {
-  padding: 16px 24px;
+  padding: 14px 20px;
   font-size: 15px;
   font-family: inherit;
   font-weight: 500;
-  letter-spacing: 0.02em;
-  border: none;
-  border-radius: 50px;
-  background: rgba(255, 255, 255, 0.85);
-  color: #3d3d3d;
+  letter-spacing: 0.01em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--primary);
+  color: var(--primary-foreground);
   cursor: pointer;
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.04),
-    0 1px 2px rgba(255, 255, 255, 0.9);
-  transition: all 0.2s ease;
+  transition: opacity 0.15s ease;
 }
 
 .button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.95);
-  transform: translateY(-1px);
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.04),
-    0 4px 8px rgba(0, 0, 0, 0.08);
+  opacity: 0.9;
 }
 
 .button:active:not(:disabled) {
-  transform: translateY(0);
+  opacity: 0.8;
 }
 
 .button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .error {
-  color: #c45c4a;
+  color: var(--destructive);
   font-size: 13px;
   text-align: center;
   margin: 0;
@@ -184,7 +120,7 @@
 }
 
 .success {
-  color: #5a7a5a;
+  color: var(--success);
   font-size: 14px;
   text-align: center;
   margin: 0;
@@ -197,10 +133,10 @@
   bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
-  font-family: 'Mamoth', sans-serif;
   font-size: 18px;
-  color: rgba(0, 0, 0, 0.2);
-  letter-spacing: 0.1em;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  letter-spacing: 0.05em;
   user-select: none;
 }
 
@@ -210,13 +146,11 @@
     flex-direction: column;
     max-width: 320px;
     padding: 12px;
-    border-radius: 28px;
   }
 
   .photoSection {
     width: 100%;
     height: 180px;
-    border-radius: 18px;
   }
 
   .formSection {
@@ -225,7 +159,7 @@
 
   .input,
   .button {
-    padding: 14px 20px;
+    padding: 12px 18px;
     font-size: 14px;
   }
 

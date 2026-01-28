@@ -8,6 +8,14 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
+// Claude Sonnet pricing per million tokens
+const CLAUDE_SONNET_INPUT_COST = 3 / 1_000_000
+const CLAUDE_SONNET_OUTPUT_COST = 15 / 1_000_000
+
+function calculateAnthropicCost(inputTokens: number, outputTokens: number): number {
+  return inputTokens * CLAUDE_SONNET_INPUT_COST + outputTokens * CLAUDE_SONNET_OUTPUT_COST
+}
+
 export interface DigestItem {
   id: string
   title: string
@@ -34,7 +42,7 @@ export interface DigestInput {
   } | null
 }
 
-export async function generateScript(input: DigestInput): Promise<string> {
+export async function generateScript(input: DigestInput): Promise<{ script: string; cost: number }> {
   const { user, items, previousDigest } = input
   const userName = user.displayName || 'there'
 
@@ -125,13 +133,19 @@ Generate the script now. Output ONLY the script text, no preamble or meta-commen
     ],
   })
 
+  // Calculate cost from usage
+  const cost = calculateAnthropicCost(
+    message.usage.input_tokens,
+    message.usage.output_tokens
+  )
+
   // Extract text from response
   const textBlock = message.content.find((block) => block.type === 'text')
   if (!textBlock || textBlock.type !== 'text') {
     throw new Error('No text response from Claude')
   }
 
-  return textBlock.text
+  return { script: textBlock.text, cost }
 }
 
 // Estimate audio duration based on word count
@@ -147,7 +161,7 @@ export async function updateUserContext(
   currentContext: string | null,
   items: DigestItem[],
   userName: string
-): Promise<string> {
+): Promise<{ context: string; cost: number }> {
   const itemsSummary = items
     .map((i) => `- ${i.title} (${i.domain || 'general'}, ${i.contentType || 'unknown'})`)
     .join('\n')
@@ -176,10 +190,15 @@ Output ONLY the updated context, nothing else.`,
     ],
   })
 
+  const cost = calculateAnthropicCost(
+    message.usage.input_tokens,
+    message.usage.output_tokens
+  )
+
   const textBlock = message.content.find((block) => block.type === 'text')
   if (!textBlock || textBlock.type !== 'text') {
-    return currentContext || ''
+    return { context: currentContext || '', cost }
   }
 
-  return textBlock.text
+  return { context: textBlock.text, cost }
 }

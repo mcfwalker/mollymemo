@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Item, CurrentMonthStats } from '@/lib/supabase'
+import { Item, AllTimeStats } from '@/lib/supabase'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { FilterBar } from '@/components/FilterBar'
 import { ItemCard } from '@/components/ItemCard'
@@ -20,7 +20,7 @@ export default function Home() {
   const [contentType, setContentType] = useState('all')
   const [status, setStatus] = useState('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [costStats, setCostStats] = useState<CurrentMonthStats | null>(null)
+  const [costStats, setCostStats] = useState<AllTimeStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
 
   const handleLogout = async () => {

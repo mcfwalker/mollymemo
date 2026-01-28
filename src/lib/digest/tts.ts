@@ -24,7 +24,7 @@ const DEFAULT_OPTIONS: Required<TTSOptions> = {
 export async function textToSpeech(
   text: string,
   options: TTSOptions = {}
-): Promise<Buffer> {
+): Promise<{ audio: Buffer; cost: number }> {
   const { voice, model, speed, instructions } = { ...DEFAULT_OPTIONS, ...options }
 
   const body: Record<string, unknown> = {
@@ -55,7 +55,8 @@ export async function textToSpeech(
   }
 
   const arrayBuffer = await response.arrayBuffer()
-  return Buffer.from(arrayBuffer)
+  const cost = estimateTTSCost(text)
+  return { audio: Buffer.from(arrayBuffer), cost }
 }
 
 // Calculate approximate cost for TTS
