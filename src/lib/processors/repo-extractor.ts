@@ -95,12 +95,13 @@ export async function searchGitHubRepo(
   }
 
   // Build search queries - try multiple strategies
-  // 1. name + context (most specific)
-  // 2. just context (catches misspelled names)
-  // 3. just name (fallback)
+  // 1. exact name match (highest priority - finds repos named exactly this)
+  // 2. name + context (specific search)
+  // 3. just context (catches misspelled names)
+  // 4. just name (fallback)
   const queries = context
-    ? [`${name} ${context}`, context, name]
-    : [name]
+    ? [`${name} in:name`, `${name} ${context}`, context, name]
+    : [`${name} in:name`, name]
 
   for (const query of queries) {
     try {
