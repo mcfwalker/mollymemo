@@ -306,7 +306,7 @@
 }
 
 .tag {
-  background: var(--bg);
+  background: var(--muted);
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 12px;
