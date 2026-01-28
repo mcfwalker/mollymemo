@@ -60,6 +60,14 @@
   padding: 20px;
 }
 
+/* Logo */
+.logo {
+  width: 160px;
+  height: auto;
+  align-self: center;
+  margin-bottom: 8px;
+}
+
 /* Input fields */
 .input {
   padding: 14px 20px;

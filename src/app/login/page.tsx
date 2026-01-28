@@ -66,6 +66,7 @@ function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className={styles.formSection}>
+      <img src="/molly_sig_1.svg" alt="Molly" className={styles.logo} />
       <input
         type="email"
         placeholder="email"
