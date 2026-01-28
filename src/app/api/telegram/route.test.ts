@@ -41,18 +41,19 @@ const TEST_WEBHOOK_SECRET = 'test-webhook-secret-123'
 function createTelegramUpdate(
   userId: number,
   chatId: number,
-  text?: string
+  text?: string,
+  caption?: string
 ): NextRequest {
-  const update = text
-    ? { message: { from: { id: userId }, chat: { id: chatId }, text } }
-    : { message: { from: { id: userId }, chat: { id: chatId } } }
+  const message: Record<string, unknown> = { from: { id: userId }, chat: { id: chatId } }
+  if (text) message.text = text
+  if (caption) message.caption = caption
 
   return new NextRequest('http://localhost/api/telegram', {
     method: 'POST',
     headers: {
       'x-telegram-bot-api-secret-token': TEST_WEBHOOK_SECRET,
     },
-    body: JSON.stringify(update),
+    body: JSON.stringify({ message }),
   })
 }
 
@@ -148,7 +149,7 @@ describe('telegram webhook route', () => {
   })
 
   describe('message filtering', () => {
-    it('ignores updates without text message', async () => {
+    it('ignores updates without text or caption', async () => {
       const request = new NextRequest('http://localhost/api/telegram', {
         method: 'POST',
         headers: { 'x-telegram-bot-api-secret-token': TEST_WEBHOOK_SECRET },
@@ -174,6 +175,38 @@ describe('telegram webhook route', () => {
 
       expect(data).toEqual({ ok: true })
       expect(sendMessage).not.toHaveBeenCalled()
+    })
+
+    it('processes messages with caption (media shares like TikTok)', async () => {
+      vi.mocked(getUserByTelegramId).mockResolvedValue(TEST_USER)
+      vi.mocked(extractUrl).mockReturnValue('https://vm.tiktok.com/abc123')
+
+      const request = createTelegramUpdate(123, 123, undefined, 'Check this out https://vm.tiktok.com/abc123')
+      await POST(request)
+
+      expect(extractUrl).toHaveBeenCalledWith('Check this out https://vm.tiktok.com/abc123')
+      expect(sendMessage).toHaveBeenCalled()
+    })
+
+    it('prefers text over caption when both are present', async () => {
+      vi.mocked(getUserByTelegramId).mockResolvedValue(TEST_USER)
+      vi.mocked(extractUrl).mockReturnValue('https://example.com')
+
+      const request = new NextRequest('http://localhost/api/telegram', {
+        method: 'POST',
+        headers: { 'x-telegram-bot-api-secret-token': TEST_WEBHOOK_SECRET },
+        body: JSON.stringify({
+          message: {
+            from: { id: 123 },
+            chat: { id: 123 },
+            text: 'text content https://example.com',
+            caption: 'caption content https://other.com',
+          },
+        }),
+      })
+      await POST(request)
+
+      expect(extractUrl).toHaveBeenCalledWith('text content https://example.com')
     })
   })
 
