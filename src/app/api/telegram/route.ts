@@ -10,6 +10,7 @@ interface TelegramUpdate {
     from: { id: number }
     chat: { id: number }
     text?: string
+    caption?: string // For media messages (videos, photos) with captions
   }
 }
 
@@ -40,12 +41,18 @@ export async function POST(request: NextRequest) {
   try {
     const update: TelegramUpdate = await request.json()
 
-    // Only handle text messages
-    if (!update.message?.text) {
+    // Handle text messages or media with captions (e.g., TikTok shares)
+    const message = update.message
+    if (!message) {
       return NextResponse.json({ ok: true })
     }
 
-    const { from, chat, text } = update.message
+    const messageText = message.text || message.caption
+    if (!messageText) {
+      return NextResponse.json({ ok: true })
+    }
+
+    const { from, chat } = message
     const telegramUserId = from.id
     const chatId = chat.id
 
@@ -56,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract URL from message
-    const url = extractUrl(text)
+    const url = extractUrl(messageText)
     if (!url) {
       await sendMessage(chatId, 'Send me a link to capture')
       return NextResponse.json({ ok: true })
