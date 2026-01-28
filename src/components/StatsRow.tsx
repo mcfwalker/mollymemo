@@ -35,7 +35,7 @@ export function StatsRow({ stats, loading }: StatsRowProps) {
           {getMonthName()}: No entries yet
         </span>
         <Link href="/stats" className={styles.historyLink}>
-          View History
+          view history
         </Link>
       </div>
     )
@@ -55,7 +55,7 @@ export function StatsRow({ stats, loading }: StatsRowProps) {
         {formatCurrency(totalCost)} total
       </span>
       <Link href="/stats" className={styles.historyLink}>
-        View History
+        view history
       </Link>
     </div>
   )
