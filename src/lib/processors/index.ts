@@ -5,7 +5,8 @@ import { detectSourceType, parseGitHubUrl } from './detect'
 import { processGitHub } from './github'
 import { processTikTok } from './tiktok'
 import { processX } from './x'
-import { processArticle } from './article'
+// Dynamic import to avoid JSDOM ESM issues on Vercel
+// import { processArticle } from './article'
 import { extractReposFromTranscript } from './repo-extractor'
 import { classify } from './classifier'
 
@@ -164,6 +165,8 @@ export async function processItem(itemId: string): Promise<void> {
         }
       }
     } else if (sourceType === 'article') {
+      // Dynamic import to avoid JSDOM ESM issues on Vercel
+      const { processArticle } = await import('./article')
       const articleData = await processArticle(item.source_url)
       if (articleData && articleData.content) {
         // Use article content as transcript for classification
