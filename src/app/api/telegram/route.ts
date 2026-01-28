@@ -44,11 +44,12 @@ interface TelegramUpdate {
 }
 
 // Handle digest settings commands
+// Returns 'send_now' if digest should be generated in background
 async function handleDigestCommand(
   chatId: number,
   user: TelegramUser,
   command: DigestCommand
-): Promise<void> {
+): Promise<string | void> {
   const supabase = createServiceClient()
 
   switch (command.action) {
@@ -106,22 +107,9 @@ async function handleDigestCommand(
       break
 
     case 'send_now':
+      // Return 'send_now' to signal main handler to use after()
       await sendMessage(chatId, 'Generating your digest now...')
-      try {
-        await generateAndSendDigest({
-          id: user.id,
-          display_name: user.display_name,
-          telegram_user_id: user.telegram_user_id,
-          digest_enabled: true,
-          digest_time: user.digest_time || '07:00',
-          timezone: user.timezone || 'America/Los_Angeles',
-          molly_context: null,
-        } as DigestUser)
-      } catch (error) {
-        console.error('Failed to generate test digest:', error)
-        await sendMessage(chatId, 'Failed to generate digest. Try again later.')
-      }
-      break
+      return 'send_now'
   }
 }
 
@@ -200,7 +188,28 @@ export async function POST(request: NextRequest) {
       const command = await parseDigestCommand(messageText)
 
       if (command.action !== 'unknown') {
-        await handleDigestCommand(chatId, user, command)
+        const result = await handleDigestCommand(chatId, user, command)
+
+        // If send_now, generate digest in background after response
+        if (result === 'send_now') {
+          after(async () => {
+            try {
+              await generateAndSendDigest({
+                id: user.id,
+                display_name: user.display_name,
+                telegram_user_id: user.telegram_user_id,
+                digest_enabled: true,
+                digest_time: user.digest_time || '07:00',
+                timezone: user.timezone || 'America/Los_Angeles',
+                molly_context: user.molly_context,
+              } as DigestUser)
+            } catch (error) {
+              console.error('Failed to generate digest:', error)
+              await sendMessage(chatId, 'Failed to generate digest. Try again later.')
+            }
+          })
+        }
+
         return NextResponse.json({ ok: true })
       }
 

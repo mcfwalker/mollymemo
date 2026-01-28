@@ -11,6 +11,7 @@ export interface TelegramUser {
   timezone: string
   telegram_user_id: number
   telegram_welcome_sent: boolean
+  molly_context: string | null
 }
 
 export async function getUserByTelegramId(
@@ -21,7 +22,7 @@ export async function getUserByTelegramId(
   const { data, error } = await supabase
     .from('users')
     .select(
-      'id, email, display_name, digest_enabled, digest_time, timezone, telegram_user_id, telegram_welcome_sent'
+      'id, email, display_name, digest_enabled, digest_time, timezone, telegram_user_id, telegram_welcome_sent, molly_context'
     )
     .eq('telegram_user_id', telegramUserId)
     .single()
