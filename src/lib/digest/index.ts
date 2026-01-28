@@ -65,7 +65,7 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
   })
   anthropicCost += scriptCost
 
-  console.log(`Script generated: ${script.split(/\s+/).length} words`)
+  console.log(`Script generated: ${script.split(/\s+/).length} words, cost: $${scriptCost.toFixed(6)}`)
 
   // 4. Convert to audio
   console.log('Converting to audio with OpenAI TTS...')
@@ -86,6 +86,7 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
   console.log(`Voice message sent, file_id: ${result.fileId}`)
 
   // 6. Store digest record
+  console.log(`Storing digest with costs: anthropic=${anthropicCost}, tts=${ttsCost}`)
   const { data: insertedDigest, error: insertError } = await supabase
     .from('digests')
     .insert({
