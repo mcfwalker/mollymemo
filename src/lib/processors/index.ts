@@ -262,7 +262,13 @@ export async function processItem(itemId: string): Promise<void> {
     }
 
     if (githubMetadata) {
-      updates.github_url = item.source_url
+      // For GitHub source items, use the source URL
+      // For other sources (TikTok, X, etc.), use the first extracted repo URL
+      if (sourceType === 'github') {
+        updates.github_url = item.source_url
+      } else if (extractedEntities.repos && extractedEntities.repos.length > 0) {
+        updates.github_url = extractedEntities.repos[0]
+      }
       updates.github_metadata = {
         stars: githubMetadata.stars,
         language: githubMetadata.language || undefined,
