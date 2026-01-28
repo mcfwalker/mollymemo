@@ -34,12 +34,15 @@ export async function extractCandidateNames(
           content: `Extract names of software tools, libraries, CLI tools, or projects mentioned in this transcript that could potentially be open source GitHub repositories.
 
 Rules:
-- Include specific tool/project names (e.g., "repeater", "sharp", "ffmpeg", "clawdbot", "claudebot")
-- Include names that sound like project names even with slight misspellings
+- Include specific tool/project names (e.g., "repeater", "sharp", "ffmpeg", "ink", "zod")
+- IMPORTANT: This is an audio transcript, so names may be misspelled. Correct likely transcription errors:
+  - "Inc" when describing React terminal UIs is probably "Ink"
+  - "Zod" might be transcribed as "Zaud" or "Sod"
+  - Think about what the actual GitHub repo name would be
 - For each name, include 2-4 keywords describing what it does (for better GitHub search)
 - Do NOT include well-known commercial services (e.g., "ChatGPT", "Figma", "Notion", "AWS", "Discord", "Telegram", "WhatsApp")
 - Do NOT include generic terms (e.g., "terminal", "algorithm", "app", "bot")
-- Return a JSON array of objects with "name" and "context" fields. If none found, return [].
+- Return a JSON array of objects with "name" (corrected spelling) and "context" fields. If none found, return [].
 
 Example output:
 [{"name": "ink", "context": "React terminal CLI components"}, {"name": "sharp", "context": "image processing Node.js"}]
@@ -91,9 +94,12 @@ export async function searchGitHubRepo(
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  // Build search queries - try with context first, then name only
+  // Build search queries - try multiple strategies
+  // 1. name + context (most specific)
+  // 2. just context (catches misspelled names)
+  // 3. just name (fallback)
   const queries = context
-    ? [`${name} ${context}`, name]
+    ? [`${name} ${context}`, context, name]
     : [name]
 
   for (const query of queries) {
