@@ -388,14 +388,14 @@
   padding: 6px 12px;
   font-size: 13px;
   background: transparent;
-  border: 1px solid var(--link);
+  border: 1px solid #3b82f6;
   border-radius: 6px;
-  color: var(--link);
+  color: #3b82f6;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 
 .retryBtn:hover {
-  background: var(--link);
+  background: #3b82f6;
   color: white;
 }
