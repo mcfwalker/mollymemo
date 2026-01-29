@@ -43,6 +43,7 @@
   height: 32px;
   width: auto;
   color: var(--text);
+  flex-shrink: 0;
 }
 
 .search {
