@@ -28,17 +28,20 @@ export function ThemeToggle() {
         border: '1px solid var(--border)',
         borderRadius: '6px',
         background: 'var(--card)',
+        color: 'var(--text-muted)',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        transition: 'background 0.15s, border-color 0.15s',
+        transition: 'background 0.15s, border-color 0.15s, color 0.15s',
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = 'var(--muted)'
+        e.currentTarget.style.color = 'var(--text)'
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = 'var(--card)'
+        e.currentTarget.style.color = 'var(--text-muted)'
       }}
       title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
