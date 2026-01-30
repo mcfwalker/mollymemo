@@ -19,7 +19,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { detectSourceType } from '@/lib/processors/detect'
-import { processItem } from '@/lib/processors'
+import { inngest } from '@/inngest/client'
 import {
   sendMessage,
   getUserByTelegramId,
@@ -281,31 +281,16 @@ export async function POST(request: NextRequest) {
     // Send immediate acknowledgment
     await sendMessage(chatId, 'Got it! Processing...')
 
-    // Process and send follow-up after response
-    after(async () => {
-      try {
-        await processItem(item.id)
-
-        // Fetch processed item for follow-up
-        const { data: processed } = await supabase
-          .from('items')
-          .select('title, summary, status')
-          .eq('id', item.id)
-          .single()
-
-        if (processed?.status === 'processed') {
-          const title = processed.title || 'Untitled'
-          const summary = processed.summary
-            ? `\n${processed.summary.slice(0, 200)}${processed.summary.length > 200 ? '...' : ''}`
-            : ''
-          await sendMessage(chatId, `✓ ${title}${summary}`)
-        } else {
-          await sendMessage(chatId, 'Failed to process - check the web app')
-        }
-      } catch (err) {
-        console.error('Background processing error:', err)
-        await sendMessage(chatId, 'Failed to process - check the web app')
-      }
+    // Send event to Inngest for processing
+    await inngest.send({
+      name: 'item/captured',
+      data: {
+        itemId: item.id,
+        sourceType: sourceType,
+        sourceUrl: parsedUrl.href,
+        userId: user.id,
+        chatId: chatId,
+      },
     })
 
     return NextResponse.json({ ok: true })
