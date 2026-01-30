@@ -8,8 +8,14 @@ interface TikTokResult {
   repoExtractionCost: number
 }
 
-// Get direct video URL from TikTok using tikwm API
-async function getTikTokVideoUrl(tiktokUrl: string): Promise<string | null> {
+interface TikTokMetadata {
+  videoUrl: string
+  title: string | null
+  author: string | null
+}
+
+// Get video URL and metadata from TikTok using tikwm API
+async function getTikTokMetadata(tiktokUrl: string): Promise<TikTokMetadata | null> {
   try {
     const response = await fetch('https://www.tikwm.com/api/', {
       method: 'POST',
@@ -30,55 +36,54 @@ async function getTikTokVideoUrl(tiktokUrl: string): Promise<string | null> {
       return null
     }
 
-    return videoUrl
+    return {
+      videoUrl,
+      title: data?.data?.title || null,
+      author: data?.data?.author?.nickname || null,
+    }
   } catch (error) {
-    console.error('Error getting TikTok video URL:', error)
+    console.error('Error getting TikTok metadata:', error)
     return null
   }
 }
 
 // Transcribe video using OpenAI's GPT-4o Mini Transcribe
+// Returns empty string if no speech detected, null on error
 async function transcribeWithOpenAI(
   videoUrl: string,
   apiKey: string
 ): Promise<string | null> {
   try {
-    console.log('[DEBUG] Starting transcription, video URL:', videoUrl.substring(0, 100))
-
     // Download video first (OpenAI requires file upload)
     const videoResponse = await fetch(videoUrl)
     if (!videoResponse.ok) {
-      console.error('[DEBUG] Failed to download video:', videoResponse.status, videoResponse.statusText)
+      console.error('Failed to download video:', videoResponse.status, videoResponse.statusText)
       return null
     }
 
     const videoBlob = await videoResponse.blob()
-    console.log('[DEBUG] Video downloaded, size:', videoBlob.size, 'type:', videoBlob.type)
 
     const formData = new FormData()
     formData.append('file', videoBlob, 'video.mp4')
     formData.append('model', 'gpt-4o-mini-transcribe')
 
-    console.log('[DEBUG] Calling OpenAI transcription API...')
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}` },
       body: formData,
     })
 
-    console.log('[DEBUG] OpenAI response status:', response.status)
-
     if (!response.ok) {
       const error = await response.text()
-      console.error('[DEBUG] OpenAI transcription error:', response.status, error)
+      console.error('OpenAI transcription error:', response.status, error)
       return null
     }
 
     const data = await response.json()
-    console.log('[DEBUG] OpenAI response data:', JSON.stringify(data).substring(0, 200))
-    return data.text || null
+    // Return empty string (not null) when no speech detected
+    return data.text ?? ''
   } catch (error) {
-    console.error('[DEBUG] Transcription error:', error)
+    console.error('Transcription error:', error)
     return null
   }
 }
@@ -91,28 +96,40 @@ export async function processTikTok(url: string): Promise<TikTokResult | null> {
   }
 
   try {
-    // Step 1: Get direct video URL from TikTok
-    const videoUrl = await getTikTokVideoUrl(url)
-    if (!videoUrl) {
-      console.error('Could not get TikTok video URL')
+    // Step 1: Get video URL and metadata from TikTok
+    const metadata = await getTikTokMetadata(url)
+    if (!metadata) {
+      console.error('Could not get TikTok metadata')
       return null
     }
 
     // Step 2: Transcribe with OpenAI
-    const transcript = await transcribeWithOpenAI(videoUrl, apiKey)
-    if (!transcript) {
+    const transcriptResult = await transcribeWithOpenAI(metadata.videoUrl, apiKey)
+    if (transcriptResult === null) {
       console.error('Transcription failed')
       return null
     }
 
-    // Step 3: Extract explicit GitHub URLs from transcript
+    // Step 3: Use transcript if available, otherwise fall back to caption
+    let transcript = transcriptResult
+    if (!transcript && metadata.title) {
+      console.log('No speech detected, using TikTok caption as fallback')
+      transcript = `[Caption]: ${metadata.title}`
+    }
+
+    if (!transcript) {
+      console.error('No transcript or caption available')
+      return null
+    }
+
+    // Step 4: Extract explicit GitHub URLs from transcript
     const githubUrlPattern = /github\.com\/[^\s"'<>,.]+/gi
     const urlMatches = transcript.match(githubUrlPattern) || []
     const explicitUrls = [...new Set(urlMatches.map((m: string) =>
       `https://${m.replace(/[.,;:!?)]+$/, '')}` // Clean trailing punctuation
     ))]
 
-    // Step 4: If no explicit URLs, use smart extraction
+    // Step 5: If no explicit URLs, use smart extraction
     let extractedUrls = explicitUrls
     let repoExtractionCost = 0
     if (explicitUrls.length === 0) {
