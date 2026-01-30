@@ -43,34 +43,42 @@ async function transcribeWithOpenAI(
   apiKey: string
 ): Promise<string | null> {
   try {
+    console.log('[DEBUG] Starting transcription, video URL:', videoUrl.substring(0, 100))
+
     // Download video first (OpenAI requires file upload)
     const videoResponse = await fetch(videoUrl)
     if (!videoResponse.ok) {
-      console.error('Failed to download video:', videoResponse.status)
+      console.error('[DEBUG] Failed to download video:', videoResponse.status, videoResponse.statusText)
       return null
     }
 
     const videoBlob = await videoResponse.blob()
+    console.log('[DEBUG] Video downloaded, size:', videoBlob.size, 'type:', videoBlob.type)
+
     const formData = new FormData()
     formData.append('file', videoBlob, 'video.mp4')
     formData.append('model', 'gpt-4o-mini-transcribe')
 
+    console.log('[DEBUG] Calling OpenAI transcription API...')
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}` },
       body: formData,
     })
 
+    console.log('[DEBUG] OpenAI response status:', response.status)
+
     if (!response.ok) {
       const error = await response.text()
-      console.error(`OpenAI transcription error: ${response.status}`, error)
+      console.error('[DEBUG] OpenAI transcription error:', response.status, error)
       return null
     }
 
     const data = await response.json()
+    console.log('[DEBUG] OpenAI response data:', JSON.stringify(data).substring(0, 200))
     return data.text || null
   } catch (error) {
-    console.error('Transcription error:', error)
+    console.error('[DEBUG] Transcription error:', error)
     return null
   }
 }
