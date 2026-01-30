@@ -112,9 +112,11 @@ export async function processTikTok(url: string): Promise<TikTokResult | null> {
 
     // Step 3: Use transcript if available, otherwise fall back to caption
     let transcript = transcriptResult
+    let usingCaptionFallback = false
     if (!transcript && metadata.title) {
       console.log('No speech detected, using TikTok caption as fallback')
       transcript = `[Caption]: ${metadata.title}`
+      usingCaptionFallback = true
     }
 
     if (!transcript) {
@@ -129,10 +131,10 @@ export async function processTikTok(url: string): Promise<TikTokResult | null> {
       `https://${m.replace(/[.,;:!?)]+$/, '')}` // Clean trailing punctuation
     ))]
 
-    // Step 5: If no explicit URLs, use smart extraction
+    // Step 5: If no explicit URLs, use smart extraction (skip for caption-only to avoid hallucinations)
     let extractedUrls = explicitUrls
     let repoExtractionCost = 0
-    if (explicitUrls.length === 0) {
+    if (explicitUrls.length === 0 && !usingCaptionFallback) {
       const { repos, cost } = await extractReposFromTranscript(transcript)
       extractedUrls = repos.map(r => r.url)
       repoExtractionCost = cost
