@@ -10,7 +10,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
-import { processItem } from '@/lib/processors'
+import { inngest } from '@/inngest/client'
 import { getCurrentUserId } from '@/lib/auth'
 
 /**
@@ -158,10 +158,10 @@ export async function POST(
   const { id } = await params
   const supabase = createServiceClient()
 
-  // Verify item exists and belongs to user
+  // Verify item exists and belongs to user, get details for Inngest event
   const { data: item, error } = await supabase
     .from('items')
-    .select('id, status')
+    .select('id, status, source_type, source_url, user_id')
     .eq('id', id)
     .eq('user_id', userId)
     .single()
@@ -177,9 +177,15 @@ export async function POST(
     .eq('id', id)
     .eq('user_id', userId)
 
-  // Fire-and-forget: process in background
-  processItem(id).catch(err => {
-    console.error('Reprocess error:', err)
+  // Send to Inngest for processing (no chatId - retry doesn't send Telegram notification)
+  await inngest.send({
+    name: 'item/captured',
+    data: {
+      itemId: id,
+      sourceType: item.source_type,
+      sourceUrl: item.source_url,
+      userId: item.user_id,
+    },
   })
 
   return NextResponse.json({
