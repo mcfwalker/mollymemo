@@ -374,7 +374,70 @@ export const processItem = inngest.createFunction(
       await supabase.from("items").update(updates).eq("id", itemId);
     });
 
-    // Step 7: Generate embedding for semantic search
+    // Step 7: Assign to containers
+    const containerResult = await step.run("assign-containers", async () => {
+      const { assignContainers, applyContainerAssignment } = await import("@/lib/containers");
+
+      // Fetch the processed item
+      const { data: processed } = await supabase
+        .from("items")
+        .select("title, summary, tags, domain, content_type, user_id")
+        .eq("id", itemId)
+        .single();
+
+      if (!processed || !processed.title) {
+        console.log("Skipping container assignment - no title");
+        return null;
+      }
+
+      // Fetch user's existing containers
+      const { data: containers } = await supabase
+        .from("containers")
+        .select("id, name, description")
+        .eq("user_id", processed.user_id)
+        .order("updated_at", { ascending: false });
+
+      // Fetch project anchors for filing hints
+      const { data: anchors } = await supabase
+        .from("project_anchors")
+        .select("name, description, tags")
+        .eq("user_id", processed.user_id);
+
+      const assignment = await assignContainers(
+        {
+          title: processed.title,
+          summary: processed.summary,
+          tags: processed.tags,
+          domain: processed.domain,
+          content_type: processed.content_type,
+        },
+        containers || [],
+        anchors || []
+      );
+
+      if (!assignment) {
+        console.log("Container assignment returned null");
+        return null;
+      }
+
+      const result = await applyContainerAssignment(
+        supabase,
+        processed.user_id,
+        itemId,
+        assignment
+      );
+
+      console.log(
+        `Assigned item ${itemId} to containers: ${result.containerNames.join(", ")}, cost: $${assignment.cost.toFixed(6)}`
+      );
+
+      return {
+        containerNames: result.containerNames,
+        cost: assignment.cost,
+      };
+    });
+
+    // Step 8: Generate embedding for semantic search (was step 7)
     await step.run("generate-embedding", async () => {
       const { embedItem } = await import("@/lib/embeddings");
 
@@ -409,7 +472,7 @@ export const processItem = inngest.createFunction(
       }
     });
 
-    // Step 8: Extract and store interests
+    // Step 9: Extract and store interests
     await step.run("extract-interests", async () => {
       const { extractInterests, calculateWeight } = await import("@/lib/interests");
 
@@ -478,7 +541,7 @@ export const processItem = inngest.createFunction(
       console.log(`Extracted ${result.interests.length} interests, cost: $${result.cost.toFixed(6)}`);
     });
 
-    // Step 9: Notify user (if Telegram capture)
+    // Step 10: Notify user (if Telegram capture)
     if (chatId) {
       await step.run("notify-user", async () => {
         const { data: processed } = await supabase
@@ -492,7 +555,10 @@ export const processItem = inngest.createFunction(
           const summary = processed.summary
             ? `\n${processed.summary.slice(0, 200)}${processed.summary.length > 200 ? "..." : ""}`
             : "";
-          await sendMessage(chatId, `✓ ${title}${summary}`);
+          const containerInfo = containerResult?.containerNames?.length
+            ? `\n📂 ${containerResult.containerNames.join(", ")}`
+            : "";
+          await sendMessage(chatId, `✓ ${title}${summary}${containerInfo}`);
         }
       });
     }
