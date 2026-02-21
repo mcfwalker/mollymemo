@@ -225,3 +225,119 @@ export async function applyContainerAssignment(
 
   return { containerNames }
 }
+
+export interface MergeSuggestion {
+  source: string  // container ID to merge FROM (will be deleted)
+  target: string  // container ID to merge INTO (will be kept)
+  reason: string
+}
+
+export interface MergeResult {
+  merges: MergeSuggestion[]
+  cost: number
+}
+
+export interface MergeCandidate {
+  id: string
+  name: string
+  description: string | null
+  item_count: number
+  items: string[]  // item titles for context
+}
+
+/**
+ * Use GPT-4o mini to identify containers that should be merged.
+ * Prefers merging smaller containers into larger ones.
+ * Returns null if < 2 containers or on error.
+ */
+export async function suggestMerges(
+  containers: MergeCandidate[]
+): Promise<MergeResult | null> {
+  if (containers.length < 2) return null
+
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    console.error('OPENAI_API_KEY not configured')
+    return null
+  }
+
+  const containerList = containers
+    .map(c => `- [${c.id}] "${c.name}" (${c.item_count} items): ${c.description || 'No description'}. Sample items: ${c.items.slice(0, 5).join(', ') || 'none'}`)
+    .join('\n')
+
+  const prompt = `You are a personal knowledge librarian. Review these containers and identify any that should be merged because they cover the same or very similar topics.
+
+CONTAINERS:
+${containerList}
+
+RULES:
+1. Merge aggressively — if two containers cover substantially the same topic, merge them.
+2. Always merge the SMALLER container (fewer items) into the LARGER one.
+3. Only suggest merges where there is clear semantic overlap. "AI Dev Tools" and "AI Tooling" should merge. "AI Dev Tools" and "Game Design" should not.
+4. A container can only appear once as a source (it can only be merged into one target).
+5. If no merges are needed, return an empty array.
+
+Return ONLY valid JSON, no markdown:
+{"merges": [{"source": "smaller-container-id", "target": "larger-container-id", "reason": "brief explanation"}]}`
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
+        max_tokens: 500,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error(`OpenAI API error: ${response.status}`, error)
+      return null
+    }
+
+    const data = await response.json()
+    const text = data.choices?.[0]?.message?.content
+
+    if (!text) {
+      console.error('No response from OpenAI for merge suggestions')
+      return null
+    }
+
+    const usage = data.usage || {}
+    const cost = (usage.prompt_tokens || 0) * OPENAI_INPUT_PRICE +
+                 (usage.completion_tokens || 0) * OPENAI_OUTPUT_PRICE
+
+    const jsonStr = text.replace(/```json\n?|\n?```/g, '').trim()
+    const parsed = JSON.parse(jsonStr)
+
+    // Validate IDs exist in input
+    const validIds = new Set(containers.map(c => c.id))
+    const usedSources = new Set<string>()
+
+    const validMerges: MergeSuggestion[] = (parsed.merges || [])
+      .filter((m: { source?: string; target?: string; reason?: string }) => {
+        if (!m.source || !m.target || !m.reason) return false
+        if (!validIds.has(m.source) || !validIds.has(m.target)) return false
+        if (m.source === m.target) return false
+        if (usedSources.has(m.source)) return false
+        usedSources.add(m.source)
+        return true
+      })
+      .map((m: { source: string; target: string; reason: string }) => ({
+        source: m.source,
+        target: m.target,
+        reason: m.reason,
+      }))
+
+    return { merges: validMerges, cost }
+  } catch (error) {
+    console.error('Merge suggestion error:', error)
+    return null
+  }
+}
