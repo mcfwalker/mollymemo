@@ -1,49 +1,46 @@
-.main {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
+/* ===== Layout ===== */
+
+.layout {
+  display: flex;
+  min-height: 100vh;
 }
 
-.header {
+.content {
+  flex: 1;
+  margin-left: 220px;
+  padding: 20px;
+  max-width: 900px;
+}
+
+@media (max-width: 768px) {
+  .content {
+    margin-left: 0;
+    padding: 16px;
+    max-width: 100%;
+  }
+}
+
+/* ===== Content header (search bar + mobile controls) ===== */
+
+.contentHeader {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 20px;
 }
 
-.headerRight {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-
-@media (max-width: 768px) {
-  .header {
-    flex-wrap: wrap;
-  }
-
-  .title {
-    font-size: 22px;
-  }
-
-  .headerRight {
-    order: 3;
-    width: 100%;
-    margin-top: 12px;
-  }
-
-  .search {
-    flex: 1;
-    width: auto;
-  }
-}
-
-.logo {
-  height: 32px;
+.mobileLogo {
+  display: none;
+  height: 24px;
   width: auto;
   color: var(--text);
   flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .mobileLogo {
+    display: block;
+  }
 }
 
 .search {
@@ -53,7 +50,8 @@
   border-radius: 8px;
   background: var(--bg-card);
   color: var(--text);
-  width: 200px;
+  width: 100%;
+  max-width: 400px;
 }
 
 .search:focus {
@@ -61,68 +59,57 @@
   border-color: var(--accent);
 }
 
-.iconButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--card);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-  text-decoration: none;
+@media (max-width: 768px) {
+  .search {
+    flex: 1;
+    max-width: none;
+  }
 }
 
-.iconButton:hover {
-  color: var(--text);
-  background: var(--muted);
-}
+/* ===== Mobile inline filters ===== */
 
-.filters {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
-  align-items: center;
+.mobileFilters {
+  display: none;
 }
 
 @media (max-width: 768px) {
-  .filters {
+  .mobileFilters {
+    display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    margin-bottom: 16px;
+    align-items: center;
   }
 
-  .filters select {
+  .mobileFilters select {
     flex: 1;
     min-width: 100px;
+    padding: 8px 32px 8px 12px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-card);
+    color: var(--text);
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    cursor: pointer;
+  }
+
+  .mobileFilters select:focus {
+    outline: none;
+    border-color: var(--accent);
   }
 }
 
-.filters select {
-  padding: 8px 32px 8px 12px;
-  font-size: 13px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg-card);
-  color: var(--text);
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  cursor: pointer;
-}
-
-.filters select:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-.count {
-  margin-left: auto;
+.mobileCount {
+  font-size: 12px;
   color: var(--text-muted);
-  font-size: 13px;
+  margin-left: auto;
 }
+
+/* ===== Card list ===== */
 
 .list {
   display: flex;
@@ -136,6 +123,8 @@
   padding: 40px;
   color: var(--text-muted);
 }
+
+/* ===== Card ===== */
 
 .card {
   background: var(--bg-card);
@@ -214,6 +203,8 @@
   color: var(--accent-foreground);
 }
 
+/* ===== Project badges ===== */
+
 .projectBadges {
   display: flex;
   flex-wrap: wrap;
@@ -245,6 +236,8 @@
   color: var(--warning-foreground);
 }
 
+/* ===== Card meta continued ===== */
+
 .date {
   margin-left: auto;
 }
@@ -275,6 +268,8 @@
   background: var(--status-error-bg);
   color: var(--error);
 }
+
+/* ===== Card details ===== */
 
 .summary {
   font-size: 14px;
@@ -322,7 +317,7 @@
 }
 
 .repoLink::before {
-  content: '↗';
+  content: '\2197';
   font-size: 11px;
 }
 
@@ -354,6 +349,8 @@
 .error {
   color: var(--error);
 }
+
+/* ===== Editing ===== */
 
 .editInput {
   font-weight: 600;
@@ -390,6 +387,8 @@
 .editBtn:hover {
   color: var(--text);
 }
+
+/* ===== Card actions ===== */
 
 .cardActions {
   display: flex;
