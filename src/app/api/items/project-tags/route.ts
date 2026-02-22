@@ -20,8 +20,20 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServiceClient()
 
+  // Verify requested items belong to the authenticated user
+  const { data: ownedItems } = await supabase
+    .from('items')
+    .select('id')
+    .eq('user_id', userId)
+    .in('id', itemIds)
+
+  const ownedIds = (ownedItems || []).map(i => i.id)
+  if (ownedIds.length === 0) {
+    return NextResponse.json({ tags: {} })
+  }
+
   const { data, error } = await supabase.rpc('get_item_project_tags', {
-    p_item_ids: itemIds,
+    p_item_ids: ownedIds,
   })
 
   if (error) {
@@ -30,7 +42,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Group by item_id for easy frontend consumption
-  const tags: Record<string, { project_name: string; project_stage: string }[]> = {}
+  const tags: Record<string, { project_name: string; project_stage: string | null }[]> = {}
   for (const row of data || []) {
     if (!tags[row.item_id]) {
       tags[row.item_id] = []

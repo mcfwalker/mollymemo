@@ -10,7 +10,7 @@ interface ItemCardProps {
   onUpdate: (id: string, updates: Partial<Item>) => void
   onDelete: (id: string) => void
   onRetry: (id: string) => void
-  projectTags?: { project_name: string; project_stage: string }[]
+  projectTags?: { project_name: string; project_stage: string | null }[]
 }
 
 function formatDate(dateStr: string) {
