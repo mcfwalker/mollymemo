@@ -70,7 +70,7 @@ export function ItemCard({ item, isExpanded, onToggleExpand, onUpdate, onDelete,
             />
           ) : (
             <span className={styles.name}>
-              {item.title || 'Processing...'}
+              <span className={styles.itemNumber}>#{item.item_number}</span> &mdash; {item.title || 'Processing...'}
               <button
                 className={styles.editBtn}
                 onClick={(e) => {
@@ -82,6 +82,21 @@ export function ItemCard({ item, isExpanded, onToggleExpand, onUpdate, onDelete,
                 ✎
               </button>
             </span>
+          )}
+        </div>
+        <div className={styles.cardMeta}>
+          <span className={styles.date}>{formatDate(item.captured_at)}</span>
+          <span className={`${styles.status} ${styles[item.status]}`}>{item.status}</span>
+          <span className={styles.metaSeparator}>&mdash;</span>
+          {projectTags && projectTags.length > 0 && (
+            projectTags.map((tag) => (
+              <span
+                key={tag.project_name}
+                className={`${styles.projectBadge} ${tag.project_stage ? styles[`stage_${tag.project_stage}`] || '' : ''}`}
+              >
+                {tag.project_name}
+              </span>
+            ))
           )}
           <select
             className={styles.domainSelect}
@@ -95,9 +110,6 @@ export function ItemCard({ item, isExpanded, onToggleExpand, onUpdate, onDelete,
               </option>
             ))}
           </select>
-        </div>
-        <div className={styles.cardMeta}>
-          <span className={styles.itemNumber}>#{item.item_number}</span>
           <span className={styles.type}>{item.content_type || item.source_type}</span>
           {item.github_metadata?.stars && (
             <span className={styles.stars}>★ {item.github_metadata.stars.toLocaleString()}</span>
@@ -105,23 +117,8 @@ export function ItemCard({ item, isExpanded, onToggleExpand, onUpdate, onDelete,
           {item.github_metadata?.language && (
             <span className={styles.language}>{item.github_metadata.language}</span>
           )}
-          <span className={styles.date}>{formatDate(item.captured_at)}</span>
-          <span className={`${styles.status} ${styles[item.status]}`}>{item.status}</span>
         </div>
       </div>
-
-      {projectTags && projectTags.length > 0 && (
-        <div className={styles.projectBadges}>
-          {projectTags.map((tag) => (
-            <span
-              key={tag.project_name}
-              className={`${styles.projectBadge} ${tag.project_stage ? styles[`stage_${tag.project_stage}`] || '' : ''}`}
-            >
-              {tag.project_name}
-            </span>
-          ))}
-        </div>
-      )}
 
       {item.summary && <p className={styles.summary}>{item.summary}</p>}
 
