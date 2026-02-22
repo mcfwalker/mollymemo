@@ -10,7 +10,7 @@ interface ItemCardProps {
   onUpdate: (id: string, updates: Partial<Item>) => void
   onDelete: (id: string) => void
   onRetry: (id: string) => void
-  projectTags?: { project_name: string; project_stage: string | null }[]
+  projectTags?: { project_name: string; project_stage: string | null; color_hue: number | null }[]
 }
 
 function formatDate(dateStr: string) {
@@ -92,7 +92,11 @@ export function ItemCard({ item, isExpanded, onToggleExpand, onUpdate, onDelete,
             projectTags.map((tag) => (
               <span
                 key={tag.project_name}
-                className={`${styles.projectBadge} ${tag.project_stage ? styles[`stage_${tag.project_stage}`] || '' : ''}`}
+                className={`${styles.projectBadge} ${tag.color_hue == null && tag.project_stage ? styles[`stage_${tag.project_stage}`] || '' : ''}`}
+                style={tag.color_hue != null ? {
+                  background: `hsl(${tag.color_hue} 60% 90%)`,
+                  color: `hsl(${tag.color_hue} 50% 35%)`,
+                } : undefined}
               >
                 {tag.project_name}
               </span>
