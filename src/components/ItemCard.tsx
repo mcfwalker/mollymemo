@@ -94,8 +94,8 @@ export function ItemCard({ item, isExpanded, onToggleExpand, onUpdate, onDelete,
                 key={tag.project_name}
                 className={`${styles.projectBadge} ${tag.color_hue == null && tag.project_stage ? styles[`stage_${tag.project_stage}`] || '' : ''}`}
                 style={tag.color_hue != null ? {
-                  background: `hsl(${tag.color_hue} 60% 90%)`,
-                  color: `hsl(${tag.color_hue} 50% 35%)`,
+                  background: `hsl(${tag.color_hue} 65% 45%)`,
+                  color: tag.color_hue > 40 && tag.color_hue < 190 ? '#1a1a1a' : '#fff',
                 } : undefined}
               >
                 {tag.project_name}
