@@ -17,10 +17,13 @@ interface FilterBarProps {
   total: number
   container?: string
   containers?: ContainerOption[]
+  project?: string
+  projects?: { id: string; name: string; stage: string | null }[]
   onDomainChange: (value: string) => void
   onContentTypeChange: (value: string) => void
   onStatusChange: (value: string) => void
   onContainerChange?: (value: string) => void
+  onProjectChange?: (value: string) => void
 }
 
 export function FilterBar({
@@ -30,10 +33,13 @@ export function FilterBar({
   total,
   container = 'all',
   containers = [],
+  project = 'all',
+  projects = [],
   onDomainChange,
   onContentTypeChange,
   onStatusChange,
   onContainerChange,
+  onProjectChange,
 }: FilterBarProps) {
   return (
     <div className={styles.filters}>
@@ -43,6 +49,16 @@ export function FilterBar({
           {containers.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name} ({c.item_count})
+            </option>
+          ))}
+        </select>
+      )}
+      {projects.length > 0 && onProjectChange && (
+        <select value={project} onChange={(e) => onProjectChange(e.target.value)}>
+          <option value="all">All Projects</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
             </option>
           ))}
         </select>
