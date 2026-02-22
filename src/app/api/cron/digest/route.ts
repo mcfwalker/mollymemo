@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
       const { data: user, error } = await supabase
         .from('users')
         .select(
-          'id, display_name, telegram_user_id, digest_enabled, digest_time, timezone, molly_context'
+          'id, display_name, telegram_user_id, digest_frequency, digest_day, digest_time, timezone, molly_context'
         )
         .eq('id', testUserId)
         .single()
@@ -77,7 +77,8 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      await generateAndSendDigest(user as DigestUser)
+      const testFrequency = (user.digest_frequency === 'weekly' ? 'weekly' : 'daily') as 'daily' | 'weekly'
+      await generateAndSendDigest(user as unknown as DigestUser, testFrequency)
 
       return NextResponse.json({
         ok: true,
@@ -86,17 +87,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Production mode: find users whose digest time is now
-    const users = await getUsersForDigestNow()
+    const usersToProcess = await getUsersForDigestNow()
 
-    console.log(`Found ${users.length} users for digest at this hour`)
+    console.log(`Found ${usersToProcess.length} users for digest at this hour`)
 
     const results: Array<{ userId: string; success: boolean; error?: string }> =
       []
 
-    // Process each user
-    for (const user of users) {
+    for (const { user, frequency } of usersToProcess) {
       try {
-        await generateAndSendDigest(user)
+        await generateAndSendDigest(user, frequency)
         results.push({ userId: user.id, success: true })
       } catch (error) {
         console.error(`Failed to generate digest for user ${user.id}:`, error)
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      processed: users.length,
+      processed: usersToProcess.length,
       success: successCount,
       failed: failCount,
       results,
