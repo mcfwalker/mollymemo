@@ -35,6 +35,14 @@ export interface MemoItem {
   sourceUrl: string
 }
 
+export interface TrendItem {
+  id: string
+  trendType: string
+  title: string
+  description: string
+  strength: number
+}
+
 export interface DigestInput {
   user: {
     id: string
@@ -44,6 +52,7 @@ export interface DigestInput {
   }
   items: DigestItem[]
   memos: MemoItem[] // Molly's proactive discoveries
+  trends: TrendItem[]
   previousDigest: {
     id: string
     scriptText: string
@@ -53,7 +62,7 @@ export interface DigestInput {
 }
 
 export async function generateScript(input: DigestInput): Promise<{ script: string; cost: number }> {
-  const { user, items, memos, previousDigest } = input
+  const { user, items, memos, trends, previousDigest } = input
   const userName = user.displayName || 'there'
 
   // Build previous digest context
@@ -129,6 +138,18 @@ ${domainSummary}
 
 Full items:
 ${itemsJson}
+
+## Trends (${input.trends.length} detected)
+${input.trends.length > 0 ? `These are patterns I've noticed in your saving behavior:
+${JSON.stringify(input.trends.map(t => ({
+  type: t.trendType,
+  title: t.title,
+  description: t.description,
+})), null, 2)}
+
+Mention these trends FIRST, before covering individual items. Lead with the most interesting trend.
+Say something like "I've been noticing a pattern..." or "Something interesting about your saves lately..."
+Keep each trend to 1-2 sentences.` : 'No trends detected right now.'}
 
 ## Molly's Discoveries (${memos.length} items)
 ${memos.length > 0 ? `I also found some things you might like based on your interests:

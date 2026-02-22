@@ -2,7 +2,7 @@
 // Coordinates script generation, TTS, and delivery
 
 import { createServiceClient } from '@/lib/supabase'
-import { generateScript, estimateDuration, updateUserContext, DigestItem, MemoItem } from './generator'
+import { generateScript, estimateDuration, updateUserContext, DigestItem, MemoItem, TrendItem } from './generator'
 import { textToSpeech } from './tts'
 import { sendVoiceMessage, sendTextMessage } from './sender'
 import { EMPTY_DAY_SCRIPT } from './molly'
@@ -28,6 +28,9 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
 
   // 1b. Get pending memos (Molly's discoveries)
   const memos = await getPendingMemos(user.id)
+
+  // 1c. Get pending trends
+  const trends = await getPendingTrends(user.id)
 
   if (items.length === 0) {
     // Send "nothing new" message
@@ -65,6 +68,7 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
     },
     items,
     memos,
+    trends,
     previousDigest,
   })
   anthropicCost += scriptCost
@@ -142,6 +146,12 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
   if (memos.length > 0) {
     await markMemosAsShown(memos.map(m => m.id))
     console.log(`Marked ${memos.length} memos as shown`)
+  }
+
+  // 9. Mark trends as surfaced
+  if (trends.length > 0) {
+    await markTrendsAsSurfaced(trends.map(t => t.id))
+    console.log(`Marked ${trends.length} trends as surfaced`)
   }
 }
 
@@ -275,6 +285,33 @@ async function getPendingMemos(userId: string): Promise<MemoItem[]> {
   }))
 }
 
+// Get pending trends for a user
+async function getPendingTrends(userId: string): Promise<TrendItem[]> {
+  const supabase = createServiceClient()
+
+  const { data, error } = await supabase
+    .from('trends')
+    .select('id, trend_type, title, description, strength')
+    .eq('user_id', userId)
+    .eq('surfaced', false)
+    .gt('expires_at', new Date().toISOString())
+    .order('strength', { ascending: false })
+    .limit(3)
+
+  if (error) {
+    console.error('Error fetching pending trends:', error)
+    return []
+  }
+
+  return (data || []).map((t) => ({
+    id: t.id,
+    trendType: t.trend_type,
+    title: t.title,
+    description: t.description,
+    strength: t.strength,
+  }))
+}
+
 // Mark memos as shown after including in digest
 async function markMemosAsShown(memoIds: string[]): Promise<void> {
   const supabase = createServiceClient()
@@ -286,4 +323,14 @@ async function markMemosAsShown(memoIds: string[]): Promise<void> {
       shown_at: new Date().toISOString(),
     })
     .in('id', memoIds)
+}
+
+// Mark trends as surfaced after including in digest
+async function markTrendsAsSurfaced(trendIds: string[]): Promise<void> {
+  const supabase = createServiceClient()
+
+  await supabase
+    .from('trends')
+    .update({ surfaced: true })
+    .in('id', trendIds)
 }
