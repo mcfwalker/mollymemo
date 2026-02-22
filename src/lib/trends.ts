@@ -157,3 +157,93 @@ export async function detectConvergence(
       sharedItems: row.shared_count,
     }))
 }
+
+// --- LLM Narration ---
+
+const OPENAI_INPUT_PRICE = 0.15 / 1_000_000
+const OPENAI_OUTPUT_PRICE = 0.60 / 1_000_000
+
+export async function narrateTrends(
+  signals: TrendSignal[]
+): Promise<NarrationResult | null> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    console.error('OPENAI_API_KEY not configured')
+    return null
+  }
+
+  const signalDescriptions = signals.map((s) => {
+    switch (s.type) {
+      case 'velocity':
+        return `VELOCITY: Container "${s.containerName}" gained ${s.itemCount14d} items in the last 14 days.`
+      case 'emergence':
+        return `EMERGENCE: Interest "${s.value}" (${s.interestType}) appeared recently (first seen: ${s.firstSeen}) and already has ${s.occurrenceCount} occurrences.`
+      case 'convergence':
+        return `CONVERGENCE: Containers "${s.containerA.name}" and "${s.containerB.name}" share ${s.sharedItems} recent items.`
+    }
+  })
+
+  const prompt = `You are a personal knowledge analyst. Given these detected signals about a user's saving patterns, generate concise, natural-language trend descriptions.
+
+SIGNALS:
+${signalDescriptions.join('\n')}
+
+For each signal, generate:
+- trendType: the signal type ("velocity", "emergence", or "convergence")
+- title: 3-6 word phrase (e.g., "Deep into agent orchestration")
+- description: one conversational sentence addressed to the user with "you" (e.g., "You've saved 5 items about agent orchestration in the last two weeks.")
+- strength: 0.0-1.0 based on signal intensity (higher count/more overlap = stronger)
+
+Return ONLY valid JSON, no markdown:
+{"trends": [{"trendType": "...", "title": "...", "description": "...", "strength": 0.8}]}`
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        max_tokens: 500,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error(`OpenAI API error: ${response.status}`, error)
+      return null
+    }
+
+    const data = await response.json()
+    const text = data.choices?.[0]?.message?.content
+
+    if (!text) {
+      console.error('No response from OpenAI for trend narration')
+      return null
+    }
+
+    const usage = data.usage || {}
+    const cost = (usage.prompt_tokens || 0) * OPENAI_INPUT_PRICE +
+                 (usage.completion_tokens || 0) * OPENAI_OUTPUT_PRICE
+
+    const jsonStr = text.replace(/```json\n?|\n?```/g, '').trim()
+    const parsed = JSON.parse(jsonStr)
+
+    const trends: NarratedTrend[] = (parsed.trends || []).map((t: any, i: number) => ({
+      trendType: t.trendType,
+      title: t.title,
+      description: t.description,
+      strength: Math.min(1.0, Math.max(0.0, t.strength || 0.5)),
+      signals: signals[i] || signals[0],
+    }))
+
+    return { trends, cost }
+  } catch (error) {
+    console.error('Trend narration error:', error)
+    return null
+  }
+}

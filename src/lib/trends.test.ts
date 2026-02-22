@@ -225,3 +225,80 @@ describe('detectConvergence', () => {
     expect(signals).toHaveLength(0)
   })
 })
+
+describe('narrateTrends', () => {
+  let originalFetch: typeof global.fetch
+
+  beforeEach(() => {
+    originalFetch = global.fetch
+    process.env.OPENAI_API_KEY = 'test-api-key'
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    global.fetch = originalFetch
+    delete process.env.OPENAI_API_KEY
+    vi.restoreAllMocks()
+  })
+
+  it('narrates signals into human-readable trends', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              trends: [
+                {
+                  trendType: 'velocity',
+                  title: 'Deep into agent orchestration',
+                  description: "You've saved 5 items about agent orchestration in the last two weeks.",
+                  strength: 0.8,
+                },
+              ],
+            }),
+          },
+        }],
+        usage: { prompt_tokens: 300, completion_tokens: 100 },
+      }),
+    })
+
+    const { narrateTrends } = await import('./trends')
+    const signals: any[] = [
+      { type: 'velocity', containerId: 'c-1', containerName: 'Agent Orchestration', itemCount14d: 5 },
+    ]
+
+    const result = await narrateTrends(signals)
+
+    expect(result).not.toBeNull()
+    expect(result!.trends).toHaveLength(1)
+    expect(result!.trends[0].title).toBe('Deep into agent orchestration')
+    expect(result!.cost).toBeGreaterThan(0)
+  })
+
+  it('returns null when API key missing', async () => {
+    delete process.env.OPENAI_API_KEY
+
+    const { narrateTrends } = await import('./trends')
+    const result = await narrateTrends([
+      { type: 'velocity', containerId: 'c-1', containerName: 'Test', itemCount14d: 5 },
+    ])
+
+    expect(result).toBeNull()
+  })
+
+  it('returns null on API error', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: () => Promise.resolve('Server error'),
+    })
+
+    const { narrateTrends } = await import('./trends')
+    const result = await narrateTrends([
+      { type: 'velocity', containerId: 'c-1', containerName: 'Test', itemCount14d: 5 },
+    ])
+
+    expect(result).toBeNull()
+  })
+})
