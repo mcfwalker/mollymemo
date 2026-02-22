@@ -206,19 +206,11 @@
   text-transform: uppercase;
 }
 
-.status.processed {
-  background: var(--status-success-bg);
-  color: var(--success);
-}
-
-.status.pending {
-  background: var(--status-warning-bg);
-  color: var(--warning-foreground);
-}
-
+.status.processed,
+.status.pending,
 .status.processing {
-  background: var(--status-info-bg);
-  color: var(--accent-foreground);
+  background: var(--muted);
+  color: var(--text-muted);
 }
 
 .status.failed {
