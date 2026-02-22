@@ -87,3 +87,32 @@ export async function detectVelocity(
 
   return signals
 }
+
+// --- Emergence Detection ---
+
+const EMERGENCE_THRESHOLD = 2
+const EMERGENCE_WINDOW_DAYS = 14
+
+export async function detectEmergence(
+  supabase: any,
+  userId: string
+): Promise<EmergenceSignal[]> {
+  const cutoff = new Date(Date.now() - EMERGENCE_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString()
+
+  const { data, error } = await supabase
+    .from('user_interests')
+    .select('interest_type, value, occurrence_count, first_seen')
+    .eq('user_id', userId)
+    .gte('first_seen', cutoff)
+    .gte('occurrence_count', EMERGENCE_THRESHOLD)
+
+  if (error || !data) return []
+
+  return data.map((row: any) => ({
+    type: 'emergence' as const,
+    interestType: row.interest_type,
+    value: row.value,
+    occurrenceCount: row.occurrence_count,
+    firstSeen: row.first_seen,
+  }))
+}

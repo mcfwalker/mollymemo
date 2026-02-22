@@ -95,3 +95,66 @@ describe('detectVelocity', () => {
     expect(signals).toHaveLength(0)
   })
 })
+
+describe('detectEmergence', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('detects interests first seen in last 14 days with >= 2 occurrences', async () => {
+    const mockFrom = vi.fn()
+    const supabase = { from: mockFrom } as any
+
+    const recentDate = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
+
+    mockFrom.mockImplementation(() => ({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          gte: vi.fn().mockReturnValue({
+            gte: vi.fn().mockResolvedValue({
+              data: [
+                { interest_type: 'topic', value: 'context-engineering', occurrence_count: 3, first_seen: recentDate },
+                { interest_type: 'tool', value: 'new-tool', occurrence_count: 2, first_seen: recentDate },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    }))
+
+    const { detectEmergence } = await import('./trends')
+    const signals = await detectEmergence(supabase, 'user-1')
+
+    expect(signals).toHaveLength(2)
+    expect(signals[0].value).toBe('context-engineering')
+    expect(signals[0].occurrenceCount).toBe(3)
+  })
+
+  it('returns empty when no new interests meet threshold', async () => {
+    const mockFrom = vi.fn()
+    const supabase = { from: mockFrom } as any
+
+    mockFrom.mockImplementation(() => ({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          gte: vi.fn().mockReturnValue({
+            gte: vi.fn().mockResolvedValue({
+              data: [],
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    }))
+
+    const { detectEmergence } = await import('./trends')
+    const signals = await detectEmergence(supabase, 'user-1')
+
+    expect(signals).toHaveLength(0)
+  })
+})
