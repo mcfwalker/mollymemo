@@ -10,6 +10,7 @@ interface ItemCardProps {
   onUpdate: (id: string, updates: Partial<Item>) => void
   onDelete: (id: string) => void
   onRetry: (id: string) => void
+  projectTags?: { project_name: string; project_stage: string }[]
 }
 
 function formatDate(dateStr: string) {
@@ -25,7 +26,7 @@ function formatDate(dateStr: string) {
   return date.toLocaleDateString()
 }
 
-export function ItemCard({ item, isExpanded, onToggleExpand, onUpdate, onDelete, onRetry }: ItemCardProps) {
+export function ItemCard({ item, isExpanded, onToggleExpand, onUpdate, onDelete, onRetry, projectTags }: ItemCardProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
 
@@ -108,6 +109,19 @@ export function ItemCard({ item, isExpanded, onToggleExpand, onUpdate, onDelete,
           <span className={`${styles.status} ${styles[item.status]}`}>{item.status}</span>
         </div>
       </div>
+
+      {projectTags && projectTags.length > 0 && (
+        <div className={styles.projectBadges}>
+          {projectTags.map((tag) => (
+            <span
+              key={tag.project_name}
+              className={`${styles.projectBadge} ${tag.project_stage ? styles[`stage_${tag.project_stage}`] || '' : ''}`}
+            >
+              {tag.project_name}
+            </span>
+          ))}
+        </div>
+      )}
 
       {item.summary && <p className={styles.summary}>{item.summary}</p>}
 
