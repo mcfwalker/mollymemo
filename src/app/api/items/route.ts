@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get('status')
   const search = searchParams.get('q')
   const container = searchParams.get('container')
+  const project = searchParams.get('project')
   const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
   const offset = parseInt(searchParams.get('offset') || '0')
 
@@ -55,6 +56,20 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // If project filter, pre-fetch item IDs tagged for that project
+  let projectItemIds: string[] | null = null
+  if (project) {
+    const { data: prData } = await supabase
+      .from('item_project_relevance')
+      .select('item_id')
+      .eq('project_anchor_id', project)
+
+    projectItemIds = (prData || []).map(pr => pr.item_id)
+    if (projectItemIds.length === 0) {
+      return NextResponse.json({ items: [], total: 0 })
+    }
+  }
+
   let query = supabase
     .from('items')
     .select('*', { count: 'exact' })
@@ -64,6 +79,10 @@ export async function GET(request: NextRequest) {
 
   if (containerItemIds) {
     query = query.in('id', containerItemIds)
+  }
+
+  if (projectItemIds) {
+    query = query.in('id', projectItemIds)
   }
 
   if (domain) {
