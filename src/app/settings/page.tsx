@@ -6,7 +6,8 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import styles from './page.module.css'
 
 interface UserSettings {
-  digest_enabled: boolean
+  digest_frequency: string  // 'daily' | 'weekly' | 'never'
+  digest_day: number        // 0=Sun, 1=Mon, ..., 6=Sat
   digest_time: string
   timezone: string
 }

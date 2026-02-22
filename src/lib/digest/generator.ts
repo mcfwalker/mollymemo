@@ -43,6 +43,27 @@ export interface TrendItem {
   strength: number
 }
 
+export interface ContainerActivity {
+  containerId: string
+  containerName: string
+  itemCountInWindow: number
+  totalItemCount: number
+  isNew: boolean // created within the digest window
+}
+
+export interface CrossReference {
+  itemId: string
+  itemTitle: string
+  sourceUrl: string
+  containerNames: string[]
+}
+
+export interface ProjectMatch {
+  projectName: string
+  projectDescription: string | null
+  matchedItems: { itemId: string; itemTitle: string; matchedTags: string[] }[]
+}
+
 export interface DigestInput {
   user: {
     id: string
@@ -50,9 +71,13 @@ export interface DigestInput {
     timezone: string
     mollyContext: string | null // Molly's evolving memory of this user
   }
+  frequency: 'daily' | 'weekly'
   items: DigestItem[]
   memos: MemoItem[] // Molly's proactive discoveries
   trends: TrendItem[]
+  containerActivity: ContainerActivity[]
+  crossReferences: CrossReference[]
+  projectMatches: ProjectMatch[]
   previousDigest: {
     id: string
     scriptText: string

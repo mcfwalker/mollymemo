@@ -11,7 +11,8 @@ export interface DigestUser {
   id: string
   display_name: string | null
   telegram_user_id: number
-  digest_enabled: boolean
+  digest_frequency: string  // 'daily' | 'weekly' | 'never'
+  digest_day: number        // 0=Sun, 1=Mon, ..., 6=Sat
   digest_time: string
   timezone: string
   molly_context: string | null
