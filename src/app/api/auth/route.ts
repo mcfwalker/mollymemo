@@ -6,20 +6,21 @@
  * POST /api/auth - Initiate Google OAuth sign-in
  * DELETE /api/auth - Logout (clear session)
  */
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 
 /**
  * Initiate Google OAuth sign-in via Supabase.
  * Returns the Google OAuth URL for the client to navigate to.
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    const origin = request.headers.get('origin') || request.nextUrl.origin
     const supabase = await createServerClient()
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
+        redirectTo: `${origin}/api/auth/callback`,
         queryParams: {
           prompt: 'select_account',
         },

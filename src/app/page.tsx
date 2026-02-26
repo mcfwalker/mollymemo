@@ -19,7 +19,7 @@ export default function Home() {
   const [containers, setContainers] = useState<{ id: string; name: string; item_count: number }[]>([])
   const [project, setProject] = useState('all')
   const [projects, setProjects] = useState<{ id: string; name: string; stage: string | null }[]>([])
-  const [projectTags, setProjectTags] = useState<Record<string, { project_name: string; project_stage: string | null; color_hue: number | null }[]>>({})
+  const [projectTags, setProjectTags] = useState<Record<string, { project_name: string; color_hue: number | null }[]>>({})
 
   const fetchItems = useCallback(async () => {
     setLoading(true)

@@ -10,7 +10,7 @@ interface ItemCardProps {
   onUpdate: (id: string, updates: Partial<Item>) => void
   onDelete: (id: string) => void
   onRetry: (id: string) => void
-  projectTags?: { project_name: string; project_stage: string | null; color_hue: number | null }[]
+  projectTags?: { project_name: string; color_hue: number | null }[]
 }
 
 function formatDate(dateStr: string) {
@@ -24,6 +24,26 @@ function formatDate(dateStr: string) {
   if (hours < 24) return `${hours}h ago`
   if (days < 7) return `${days}d ago`
   return date.toLocaleDateString()
+}
+
+/** Returns true if dark text (#1a1a1a) should be used on an HSL background for WCAG contrast. */
+function hslNeedsDarkText(h: number, s: number, l: number): boolean {
+  // Convert HSL to sRGB
+  const s1 = s / 100, l1 = l / 100
+  const c = (1 - Math.abs(2 * l1 - 1)) * s1
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
+  const m = l1 - c / 2
+  let r = 0, g = 0, b = 0
+  if (h < 60)      { r = c; g = x }
+  else if (h < 120) { r = x; g = c }
+  else if (h < 180) { g = c; b = x }
+  else if (h < 240) { g = x; b = c }
+  else if (h < 300) { r = x; b = c }
+  else              { r = c; b = x }
+  // Relative luminance (WCAG 2.1)
+  const toLinear = (v: number) => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+  const lum = 0.2126 * toLinear(r + m) + 0.7152 * toLinear(g + m) + 0.0722 * toLinear(b + m)
+  return lum > 0.179
 }
 
 export function ItemCard({ item, isExpanded, onToggleExpand, onUpdate, onDelete, onRetry, projectTags }: ItemCardProps) {
@@ -92,10 +112,10 @@ export function ItemCard({ item, isExpanded, onToggleExpand, onUpdate, onDelete,
             projectTags.map((tag) => (
               <span
                 key={tag.project_name}
-                className={`${styles.projectBadge} ${tag.color_hue == null && tag.project_stage ? styles[`stage_${tag.project_stage}`] || '' : ''}`}
+                className={styles.projectBadge}
                 style={tag.color_hue != null ? {
                   background: `hsl(${tag.color_hue} 65% 45%)`,
-                  color: tag.color_hue > 40 && tag.color_hue < 190 ? '#1a1a1a' : '#fff',
+                  color: hslNeedsDarkText(tag.color_hue, 65, 45) ? '#1a1a1a' : '#fff',
                 } : undefined}
               >
                 {tag.project_name}

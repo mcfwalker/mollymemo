@@ -42,14 +42,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Group by item_id for easy frontend consumption
-  const tags: Record<string, { project_name: string; project_stage: string | null; color_hue: number | null }[]> = {}
+  const tags: Record<string, { project_name: string; color_hue: number | null }[]> = {}
   for (const row of data || []) {
     if (!tags[row.item_id]) {
       tags[row.item_id] = []
     }
     tags[row.item_id].push({
       project_name: row.project_name,
-      project_stage: row.project_stage,
       color_hue: row.color_hue ?? null,
     })
   }
