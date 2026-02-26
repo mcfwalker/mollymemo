@@ -105,6 +105,23 @@ export interface ContainerItem {
   added_at: string
 }
 
+// Types for reports
+export interface Report {
+  id: string
+  user_id: string
+  report_type: 'daily' | 'weekly'
+  title: string
+  content: string
+  content_html: string | null
+  window_start: string
+  window_end: string
+  item_count: number
+  projects_mentioned: { name: string; stage: string | null; relevance: string }[] | null
+  generated_at: string
+  emailed_at: string | null
+  created_at: string
+}
+
 // Types for project anchors
 export interface ProjectAnchor {
   id: string
