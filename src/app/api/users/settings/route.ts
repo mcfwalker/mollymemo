@@ -1,16 +1,14 @@
 /**
  * User Settings API Route
  *
- * Manages user preferences for digest delivery.
+ * Manages user preferences for trend reports and general settings.
  *
  * GET /api/users/settings - Get current settings
  * PATCH /api/users/settings - Update settings
  *
  * Settings:
- * - digest_frequency: string - How often to receive digests (daily/weekly/never)
- * - digest_day: number - Day of week for weekly digest (0=Sun, 6=Sat)
- * - digest_time: string - Time to deliver digest (HH:MM format)
- * - timezone: string - IANA timezone for digest scheduling
+ * - timezone: string - IANA timezone
+ * - report_frequency: string - Trend report frequency (daily/weekly/none)
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
@@ -31,7 +29,7 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('users')
-    .select('digest_frequency, digest_day, digest_time, timezone')
+    .select('timezone, report_frequency')
     .eq('id', userId)
     .single()
 
@@ -40,10 +38,8 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
-    digest_frequency: data.digest_frequency ?? 'daily',
-    digest_day: data.digest_day ?? 1,
-    digest_time: data.digest_time ?? '07:00',
     timezone: data.timezone ?? 'America/Los_Angeles',
+    report_frequency: data.report_frequency ?? 'daily',
   })
 }
 
@@ -63,7 +59,7 @@ export async function PATCH(request: NextRequest) {
   const updates = await request.json()
 
   // Validate updates
-  const allowed = ['digest_frequency', 'digest_day', 'digest_time', 'timezone']
+  const allowed = ['timezone', 'report_frequency']
   const filtered: Record<string, unknown> = {}
 
   for (const key of allowed) {
@@ -75,20 +71,8 @@ export async function PATCH(request: NextRequest) {
           return NextResponse.json({ error: 'Invalid timezone' }, { status: 400 })
         }
       }
-      if (key === 'digest_time' && !/^\d{2}:\d{2}$/.test(updates[key])) {
-        return NextResponse.json(
-          { error: 'Invalid time format' },
-          { status: 400 }
-        )
-      }
-      if (key === 'digest_frequency' && !['daily', 'weekly', 'never'].includes(updates[key])) {
-        return NextResponse.json({ error: 'Invalid frequency' }, { status: 400 })
-      }
-      if (key === 'digest_day') {
-        const day = Number(updates[key])
-        if (!Number.isInteger(day) || day < 0 || day > 6) {
-          return NextResponse.json({ error: 'Invalid day (0-6)' }, { status: 400 })
-        }
+      if (key === 'report_frequency' && !['daily', 'weekly', 'none'].includes(updates[key])) {
+        return NextResponse.json({ error: 'Invalid report frequency' }, { status: 400 })
       }
       filtered[key] = updates[key]
     }

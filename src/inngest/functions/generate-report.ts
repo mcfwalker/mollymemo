@@ -6,6 +6,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { inngest } from "../client";
 import { createServiceClient } from "@/lib/supabase";
+import { sendReportEmail } from "@/lib/email";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -33,7 +34,7 @@ export const generateDailyReport = inngest.createFunction(
     const users = await step.run("get-eligible-users", async () => {
       const { data, error } = await supabase
         .from("users")
-        .select("id, display_name, timezone, molly_context, report_frequency")
+        .select("id, email, display_name, timezone, molly_context, report_frequency")
         .neq("report_frequency", "none");
 
       if (error) throw new Error(`Failed to fetch users: ${error.message}`);
@@ -184,17 +185,21 @@ export const generateDailyReport = inngest.createFunction(
       );
 
       // Step 5: Store report
-      await step.run(`store-report-${user.id}`, async () => {
-        const { error } = await supabase.from("reports").insert({
-          user_id: user.id,
-          report_type: "daily",
-          title: report.title,
-          content: report.content,
-          window_start: report.windowStart,
-          window_end: report.windowEnd,
-          item_count: items.length,
-          projects_mentioned: report.projectsMentioned,
-        });
+      const reportId = await step.run(`store-report-${user.id}`, async () => {
+        const { data: inserted, error } = await supabase
+          .from("reports")
+          .insert({
+            user_id: user.id,
+            report_type: "daily",
+            title: report.title,
+            content: report.content,
+            window_start: report.windowStart,
+            window_end: report.windowEnd,
+            item_count: items.length,
+            projects_mentioned: report.projectsMentioned,
+          })
+          .select("id")
+          .single();
 
         if (error) {
           throw new Error(`Failed to store report: ${error.message}`);
@@ -203,7 +208,31 @@ export const generateDailyReport = inngest.createFunction(
         console.log(
           `Daily report stored for user ${user.id}: "${report.title}" (${items.length} items, cost: $${report.cost.toFixed(4)})`
         );
+        return inserted.id;
       });
+
+      // Step 6: Send email
+      if (user.email && process.env.RESEND_API_KEY) {
+        await step.run(`email-report-${user.id}`, async () => {
+          await sendReportEmail({
+            to: user.email,
+            reportType: "daily",
+            title: report.title,
+            content: report.content,
+            windowStart: report.windowStart,
+            windowEnd: report.windowEnd,
+            itemCount: items.length,
+            projectsMentioned: report.projectsMentioned,
+          });
+
+          await supabase
+            .from("reports")
+            .update({ emailed_at: new Date().toISOString() })
+            .eq("id", reportId);
+
+          console.log(`Daily report emailed to ${user.email}`);
+        });
+      }
 
       reportsGenerated++;
       totalCost += report.cost;
@@ -399,7 +428,7 @@ export const generateWeeklyReport = inngest.createFunction(
     const users = await step.run("get-eligible-users", async () => {
       const { data, error } = await supabase
         .from("users")
-        .select("id, display_name, timezone, molly_context, report_frequency")
+        .select("id, email, display_name, timezone, molly_context, report_frequency")
         .neq("report_frequency", "none");
 
       if (error) throw new Error(`Failed to fetch users: ${error.message}`);
@@ -517,17 +546,21 @@ export const generateWeeklyReport = inngest.createFunction(
         }
       );
 
-      await step.run(`store-weekly-${user.id}`, async () => {
-        const { error } = await supabase.from("reports").insert({
-          user_id: user.id,
-          report_type: "weekly",
-          title: report.title,
-          content: report.content,
-          window_start: report.windowStart,
-          window_end: report.windowEnd,
-          item_count: report.itemCount,
-          projects_mentioned: report.projectsMentioned,
-        });
+      const weeklyReportId = await step.run(`store-weekly-${user.id}`, async () => {
+        const { data: inserted, error } = await supabase
+          .from("reports")
+          .insert({
+            user_id: user.id,
+            report_type: "weekly",
+            title: report.title,
+            content: report.content,
+            window_start: report.windowStart,
+            window_end: report.windowEnd,
+            item_count: report.itemCount,
+            projects_mentioned: report.projectsMentioned,
+          })
+          .select("id")
+          .single();
 
         if (error) {
           throw new Error(`Failed to store weekly report: ${error.message}`);
@@ -536,7 +569,31 @@ export const generateWeeklyReport = inngest.createFunction(
         console.log(
           `Weekly report stored for user ${user.id}: "${report.title}" (${weekData.dailies.length} dailies synthesized, cost: $${report.cost.toFixed(4)})`
         );
+        return inserted.id;
       });
+
+      // Send weekly email
+      if (user.email && process.env.RESEND_API_KEY) {
+        await step.run(`email-weekly-${user.id}`, async () => {
+          await sendReportEmail({
+            to: user.email,
+            reportType: "weekly",
+            title: report.title,
+            content: report.content,
+            windowStart: report.windowStart,
+            windowEnd: report.windowEnd,
+            itemCount: report.itemCount,
+            projectsMentioned: report.projectsMentioned,
+          });
+
+          await supabase
+            .from("reports")
+            .update({ emailed_at: new Date().toISOString() })
+            .eq("id", weeklyReportId);
+
+          console.log(`Weekly report emailed to ${user.email}`);
+        });
+      }
 
       reportsGenerated++;
       totalCost += report.cost;
