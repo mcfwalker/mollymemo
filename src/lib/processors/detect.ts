@@ -30,3 +30,11 @@ export function parseGitHubUrl(url: string): { owner: string; repo: string } | n
   if (!match) return null
   return { owner: match[1], repo: match[2].replace(/\.git$/, '') }
 }
+
+// Extract and deduplicate GitHub URLs from text (transcripts, articles, posts)
+export function extractGitHubUrls(text: string): string[] {
+  const matches = text.match(/github\.com\/[^\s"'<>,.]+/gi) || []
+  return [...new Set(
+    matches.map(m => `https://${m.replace(/[.,;:!?)]+$/, '')}`)
+  )]
+}

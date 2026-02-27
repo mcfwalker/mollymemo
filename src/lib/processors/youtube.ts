@@ -1,5 +1,6 @@
 // YouTube processor - extracts transcripts and metadata from YouTube videos
 
+import { extractGitHubUrls } from './detect'
 import { extractReposFromTranscript } from './repo-extractor'
 
 interface YouTubeResult {
@@ -200,15 +201,7 @@ export async function processYouTube(url: string): Promise<YouTubeResult | null>
     }
 
     // Extract explicit GitHub URLs from transcript
-    const githubUrlPattern = /github\.com\/[^\s"'<>,.]+/gi
-    const urlMatches = fullTranscript.match(githubUrlPattern) || []
-    const explicitUrls = [
-      ...new Set(
-        urlMatches.map(
-          (m: string) => `https://${m.replace(/[.,;:!?)]+$/, '')}`
-        )
-      ),
-    ]
+    const explicitUrls = extractGitHubUrls(fullTranscript)
 
     // Smart extraction if no explicit GitHub URLs found (skip for metadata-only fallback)
     let extractedUrls = explicitUrls

@@ -1,7 +1,7 @@
 // Main processor that orchestrates extraction and classification
 
 import { createServiceClient, Item } from '../supabase'
-import { detectSourceType, parseGitHubUrl } from './detect'
+import { detectSourceType, extractGitHubUrls, parseGitHubUrl } from './detect'
 import { processGitHub } from './github'
 import { processTikTok } from './tiktok'
 import { processX } from './x'
@@ -134,9 +134,7 @@ export async function processItem(itemId: string): Promise<void> {
         }
 
         // Also check for GitHub URLs directly in the text
-        const githubUrls = xData.text.match(/github\.com\/[^\s)]+/g) || []
-        for (const ghUrl of githubUrls.slice(0, 3)) {
-          const fullUrl = ghUrl.startsWith('http') ? ghUrl : `https://${ghUrl}`
+        for (const fullUrl of extractGitHubUrls(xData.text).slice(0, 3)) {
           if (!extractedEntities.repos?.includes(fullUrl)) {
             const gh = await processGitHub(fullUrl)
             if (gh) {
@@ -175,9 +173,7 @@ export async function processItem(itemId: string): Promise<void> {
         // Use article content as transcript for classification
         transcript = articleData.content
         // Check for GitHub URLs in article content
-        const githubUrls = articleData.content.match(/github\.com\/[^\s)]+/g) || []
-        for (const ghUrl of githubUrls.slice(0, 3)) {
-          const fullUrl = ghUrl.startsWith('http') ? ghUrl : `https://${ghUrl}`
+        for (const fullUrl of extractGitHubUrls(articleData.content).slice(0, 3)) {
           if (!extractedEntities.repos?.includes(fullUrl)) {
             const gh = await processGitHub(fullUrl)
             if (gh) {

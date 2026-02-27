@@ -1,5 +1,6 @@
 // TikTok processor using OpenAI for transcription
 
+import { extractGitHubUrls } from './detect'
 import { extractReposFromTranscript } from './repo-extractor'
 
 interface TikTokResult {
@@ -125,11 +126,7 @@ export async function processTikTok(url: string): Promise<TikTokResult | null> {
     }
 
     // Step 4: Extract explicit GitHub URLs from transcript
-    const githubUrlPattern = /github\.com\/[^\s"'<>,.]+/gi
-    const urlMatches = transcript.match(githubUrlPattern) || []
-    const explicitUrls = [...new Set(urlMatches.map((m: string) =>
-      `https://${m.replace(/[.,;:!?)]+$/, '')}` // Clean trailing punctuation
-    ))]
+    const explicitUrls = extractGitHubUrls(transcript)
 
     // Step 5: If no explicit URLs, use smart extraction (skip for caption-only to avoid hallucinations)
     let extractedUrls = explicitUrls
