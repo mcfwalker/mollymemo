@@ -2,6 +2,7 @@
 // Extracts candidate names from transcript, searches GitHub, validates matches
 
 import { chatCompletion, parseJsonResponse } from '../openai-client'
+import logger from '@/lib/logger'
 
 export interface GitHubRepoInfo {
   url: string
@@ -61,7 +62,7 @@ ${transcript.slice(0, 3000)}`
     }
     return { candidates: [], cost }
   } catch (error) {
-    console.error('Candidate name extraction error:', error)
+    logger.error({ err: error }, 'Candidate name extraction error')
     return { candidates: [], cost: 0 }
   }
 }
@@ -93,14 +94,14 @@ export async function searchGitHubRepoCandidates(
     if (candidates.length >= maxResults) break
 
     try {
-      console.log(`GitHub search: "${query}"`)
+      logger.info({ query }, 'GitHub search')
       const response = await fetch(
         `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&per_page=10&sort=stars&order=desc`,
         { headers }
       )
 
       if (!response.ok) {
-        console.error('GitHub search error:', response.status)
+        logger.error({ status: response.status }, 'GitHub search error')
         continue
       }
 
@@ -122,7 +123,7 @@ export async function searchGitHubRepoCandidates(
         }
       }
     } catch (error) {
-      console.error('GitHub search error:', error)
+      logger.error({ err: error }, 'GitHub search error')
     }
   }
 
@@ -171,7 +172,7 @@ Instructions:
     const { cost } = completion
     const selection = parseInt(completion.text.trim(), 10)
 
-    console.log(`LLM selected repo: ${completion.text.trim()} from ${candidates.length} candidates`)
+    logger.info({ selection: completion.text.trim(), candidateCount: candidates.length }, 'LLM selected repo')
 
     if (selection >= 1 && selection <= candidates.length) {
       return { repo: candidates[selection - 1], cost }
@@ -179,7 +180,7 @@ Instructions:
 
     return { repo: null, cost }
   } catch (error) {
-    console.error('LLM selection error:', error)
+    logger.error({ err: error }, 'LLM selection error')
     return { repo: null, cost: 0 }
   }
 }
@@ -233,7 +234,7 @@ Respond with ONLY "yes" or "no".`
 
     return { isMatch: completion.text.trim().toLowerCase() === 'yes', cost: completion.cost }
   } catch (error) {
-    console.error('Repo validation error:', error)
+    logger.error({ err: error }, 'Repo validation error')
     return { isMatch: false, cost: 0 }
   }
 }
@@ -245,12 +246,12 @@ export async function extractReposFromSummary(
   summary: string,
   existingRepoUrls: string[] = []
 ): Promise<{ repos: GitHubRepoInfo[]; cost: number }> {
-  console.log('Second pass repo search with summary:', `${title} ${summary}`.slice(0, 100))
+  logger.info({ preview: `${title} ${summary}`.slice(0, 100) }, 'Second pass repo search with summary')
 
   // Get multiple candidates from GitHub
   const candidates = await searchGitHubRepoCandidates(title, summary, 5)
   if (candidates.length === 0) {
-    console.log('No repo candidates found in second pass')
+    logger.info('No repo candidates found in second pass')
     return { repos: [], cost: 0 }
   }
 
@@ -259,22 +260,22 @@ export async function extractReposFromSummary(
     c => !existingRepoUrls.some(url => url.includes(c.fullName))
   )
   if (newCandidates.length === 0) {
-    console.log('All candidates already extracted')
+    logger.info('All candidates already extracted')
     return { repos: [], cost: 0 }
   }
 
-  console.log(`Second pass found ${newCandidates.length} candidates:`, newCandidates.map(c => c.fullName))
+  logger.info({ count: newCandidates.length, candidates: newCandidates.map(c => c.fullName) }, 'Second pass found candidates')
 
   // LLM selects the best match based on context
   const context = `Title: ${title}\nDescription: ${summary}`
   const { repo: selected, cost } = await selectBestRepo(newCandidates, context)
 
   if (selected) {
-    console.log(`Second pass selected: ${selected.fullName}`)
+    logger.info({ repo: selected.fullName }, 'Second pass selected')
     return { repos: [selected], cost }
   }
 
-  console.log('Second pass: LLM found no matching repo')
+  logger.info('Second pass: LLM found no matching repo')
   return { repos: [], cost }
 }
 
@@ -288,7 +289,7 @@ export async function extractReposFromTranscript(
   // Extract candidate names with context
   const { candidates, cost: extractionCost } = await extractCandidateNames(transcript)
   totalCost += extractionCost
-  console.log('Repo extraction candidates:', candidates)
+  logger.info({ candidates }, 'Repo extraction candidates')
 
   if (candidates.length === 0) {
     return { repos: [], cost: totalCost }
@@ -315,7 +316,7 @@ export async function extractReposFromTranscript(
     totalCost += selectionCost
 
     if (selected) {
-      console.log(`Selected ${selected.fullName} for candidate "${candidate.name}"`)
+      logger.info({ repo: selected.fullName, candidate: candidate.name }, 'Selected repo for candidate')
       validatedRepos.push(selected)
     }
   }

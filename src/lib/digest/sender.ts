@@ -1,6 +1,8 @@
 // Telegram voice message delivery
 // Sends audio digests to users via Telegram's sendVoice API
 
+import logger from '@/lib/logger'
+
 const TELEGRAM_API = 'https://api.telegram.org/bot'
 
 export interface SendVoiceResult {
@@ -45,7 +47,7 @@ export async function sendVoiceMessage(
     const data = await response.json()
 
     if (!data.ok) {
-      console.error('Telegram sendVoice error:', data)
+      logger.error({ chatId, telegramError: data }, 'Telegram sendVoice error')
       return { success: false, error: data.description || 'Unknown error' }
     }
 
@@ -54,7 +56,7 @@ export async function sendVoiceMessage(
       fileId: data.result?.voice?.file_id,
     }
   } catch (error) {
-    console.error('Failed to send voice message:', error)
+    logger.error({ err: error, chatId }, 'Failed to send voice message')
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -69,7 +71,7 @@ export async function sendTextMessage(
 ): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN
   if (!token) {
-    console.error('TELEGRAM_BOT_TOKEN not configured')
+    logger.error('TELEGRAM_BOT_TOKEN not configured')
     return false
   }
 
@@ -86,7 +88,7 @@ export async function sendTextMessage(
     const data = await response.json()
     return data.ok
   } catch (error) {
-    console.error('Failed to send text message:', error)
+    logger.error({ err: error, chatId }, 'Failed to send text message')
     return false
   }
 }

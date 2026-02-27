@@ -7,6 +7,7 @@ import { getContainerActivity, getCrossReferences, getProjectMatches } from './d
 import { textToSpeech } from './tts'
 import { sendVoiceMessage, sendTextMessage } from './sender'
 import { EMPTY_DAY_SCRIPT } from './molly'
+import logger from '@/lib/logger'
 
 export interface DigestUser {
   id: string
@@ -26,7 +27,7 @@ export async function generateAndSendDigest(
 ): Promise<void> {
   const supabase = createServiceClient()
 
-  console.log(`Generating ${frequency} digest for user ${user.id} (${user.display_name})`)
+  logger.info({ frequency, userId: user.id, displayName: user.display_name }, 'Generating digest')
 
   // Compute digest window
   const windowMs = frequency === 'weekly' ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
@@ -45,7 +46,7 @@ export async function generateAndSendDigest(
 
   if (items.length === 0) {
     // Send "nothing new" message
-    console.log(`No items for user ${user.id}, sending empty day message`)
+    logger.info({ userId: user.id }, 'No items for user, sending empty day message')
     const script = EMPTY_DAY_SCRIPT(user.display_name || 'there')
     const { audio: audioBuffer, cost: ttsCost } = await textToSpeech(script)
     const duration = estimateDuration(script)
@@ -62,13 +63,13 @@ export async function generateAndSendDigest(
     return
   }
 
-  console.log(`Found ${items.length} items for digest`)
+  logger.info({ itemCount: items.length }, 'Found items for digest')
 
   // 2. Get previous digest for continuity
   const previousDigest = await getPreviousDigest(user.id)
 
   // 3. Generate script
-  console.log('Generating script with Claude...')
+  logger.info('Generating script with Claude')
   let anthropicCost = 0
   const { script, cost: scriptCost } = await generateScript({
     user: {
@@ -88,25 +89,25 @@ export async function generateAndSendDigest(
   })
   anthropicCost += scriptCost
 
-  console.log(`Script generated: ${script.split(/\s+/).length} words`)
+  logger.info({ wordCount: script.split(/\s+/).length }, 'Script generated')
 
   // 4. Convert to audio
-  console.log('Converting to audio with OpenAI TTS...')
+  logger.info('Converting to audio with OpenAI TTS')
   const { audio: audioBuffer, cost: ttsCost } = await textToSpeech(script)
   const duration = estimateDuration(script)
 
-  console.log(`Audio generated: ${audioBuffer.length} bytes, ~${duration}s`)
+  logger.info({ bytes: audioBuffer.length, duration }, 'Audio generated')
 
   // 5. Send via Telegram
-  console.log('Sending voice message via Telegram...')
+  logger.info('Sending voice message via Telegram')
   const result = await sendVoiceMessage(user.telegram_user_id, audioBuffer, duration)
 
   if (!result.success) {
-    console.error(`Failed to send digest to user ${user.id}:`, result.error)
+    logger.error({ userId: user.id, error: result.error }, 'Failed to send digest')
     throw new Error(`Telegram delivery failed: ${result.error}`)
   }
 
-  console.log(`Voice message sent, file_id: ${result.fileId}`)
+  logger.info({ fileId: result.fileId }, 'Voice message sent')
 
   // 6. Store digest record
   const { data: insertedDigest, error: insertError } = await supabase
@@ -125,13 +126,13 @@ export async function generateAndSendDigest(
     .single()
 
   if (insertError) {
-    console.error('Failed to store digest record:', insertError)
+    logger.error({ err: insertError, userId: user.id }, 'Failed to store digest record')
   } else {
-    console.log(`Digest record stored for user ${user.id}`)
+    logger.info({ userId: user.id }, 'Digest record stored')
   }
 
   // 7. Update Molly's context/memory about this user
-  console.log('Updating Molly context...')
+  logger.info('Updating Molly context')
   try {
     const { context: newContext, cost: contextCost } = await updateUserContext(
       user.molly_context,
@@ -143,7 +144,7 @@ export async function generateAndSendDigest(
       .from('users')
       .update({ molly_context: newContext })
       .eq('id', user.id)
-    console.log('Molly context updated')
+    logger.info('Molly context updated')
 
     // Update digest with final anthropic cost (includes context update)
     if (insertedDigest?.id) {
@@ -153,20 +154,20 @@ export async function generateAndSendDigest(
         .eq('id', insertedDigest.id)
     }
   } catch (e) {
-    console.error('Failed to update Molly context:', e)
+    logger.error({ err: e }, 'Failed to update Molly context')
     // Non-fatal, continue
   }
 
   // 8. Mark memos as shown
   if (memos.length > 0) {
     await markMemosAsShown(memos.map(m => m.id))
-    console.log(`Marked ${memos.length} memos as shown`)
+    logger.info({ count: memos.length }, 'Marked memos as shown')
   }
 
   // 9. Mark trends as surfaced
   if (trends.length > 0) {
     await markTrendsAsSurfaced(trends.map(t => t.id))
-    console.log(`Marked ${trends.length} trends as surfaced`)
+    logger.info({ count: trends.length }, 'Marked trends as surfaced')
   }
 }
 
@@ -183,7 +184,7 @@ async function getItemsForDigest(userId: string, since: Date): Promise<DigestIte
     .order('processed_at', { ascending: false })
 
   if (error) {
-    console.error('Error fetching items for digest:', error)
+    logger.error({ err: error, userId }, 'Error fetching items for digest')
     return []
   }
 
@@ -238,7 +239,7 @@ export async function getUsersForDigestNow(): Promise<{ user: DigestUser; freque
     .not('telegram_user_id', 'is', null)
 
   if (error || !users) {
-    console.error('Error fetching users for digest:', error)
+    logger.error({ err: error }, 'Error fetching users for digest')
     return []
   }
 
@@ -276,7 +277,7 @@ export async function getUsersForDigestNow(): Promise<{ user: DigestUser; freque
 
       return true
     } catch (e) {
-      console.error(`Error checking time for user ${user.id}:`, e)
+      logger.error({ err: e, userId: user.id }, 'Error checking time for user')
       return false
     }
   }).map(user => ({
@@ -298,7 +299,7 @@ async function getPendingMemos(userId: string): Promise<MemoItem[]> {
     .limit(5) // Max 5 memos per digest
 
   if (error) {
-    console.error('Error fetching pending memos:', error)
+    logger.error({ err: error, userId }, 'Error fetching pending memos')
     return []
   }
 
@@ -326,7 +327,7 @@ async function getPendingTrends(userId: string): Promise<TrendItem[]> {
     .limit(3)
 
   if (error) {
-    console.error('Error fetching pending trends:', error)
+    logger.error({ err: error, userId }, 'Error fetching pending trends')
     return []
   }
 

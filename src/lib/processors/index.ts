@@ -9,6 +9,7 @@ import { processX } from './x'
 // import { processArticle } from './article'
 import { extractReposFromTranscript, extractReposFromSummary } from './repo-extractor'
 import { classify } from './classifier'
+import logger from '@/lib/logger'
 
 export async function processItem(itemId: string): Promise<void> {
   const supabase = createServiceClient()
@@ -21,7 +22,7 @@ export async function processItem(itemId: string): Promise<void> {
     .single()
 
   if (fetchError || !item) {
-    console.error('Failed to fetch item:', fetchError)
+    logger.error({ err: fetchError, itemId }, 'Failed to fetch item')
     return
   }
 
@@ -149,7 +150,7 @@ export async function processItem(itemId: string): Promise<void> {
 
       // Smart extraction pass: catch repos mentioned in transcript that weren't explicitly linked
       if (transcript && extractedEntities.repos?.length === 0) {
-        console.log('No repos found via Grok/oembed, running smart extraction...')
+        logger.info('No repos found via Grok/oembed, running smart extraction')
         const existingUrls = extractedEntities.repos || []
         const { repos: smartRepos, cost: smartCost } = await extractReposFromTranscript(transcript, existingUrls)
         repoExtractionCost += smartCost
@@ -206,7 +207,7 @@ export async function processItem(itemId: string): Promise<void> {
       classification.title &&
       classification.summary
     ) {
-      console.log('No repos found, running second pass with summary...')
+      logger.info('No repos found, running second pass with summary')
       const { repos: summaryRepos, cost: summaryCost } = await extractReposFromSummary(
         classification.title,
         classification.summary,
@@ -217,7 +218,7 @@ export async function processItem(itemId: string): Promise<void> {
         const gh = await processGitHub(repo.url)
         if (gh) {
           extractedEntities.repos?.push(repo.url)
-          console.log('Second pass: added repo', repo.url)
+          logger.info({ repoUrl: repo.url }, 'Second pass: added repo')
           if (!githubMetadata) {
             githubMetadata = gh
           }
@@ -229,11 +230,11 @@ export async function processItem(itemId: string): Promise<void> {
             gh.name.toLowerCase().replace(/[^a-z]/g, '')
           ) {
             // Names are similar but different (likely transcription error)
-            console.log(`Correcting title: "${classification.title}" -> "${gh.name}"`)
+            logger.info({ oldTitle: classification.title, newTitle: gh.name }, 'Correcting title')
             classification.title = gh.name
           } else if (classification.title.length <= 10) {
             // Short title that's likely just the tool name - use repo name
-            console.log(`Using repo name as title: "${gh.name}"`)
+            logger.info({ repoName: gh.name }, 'Using repo name as title')
             classification.title = gh.name
           }
         }
@@ -270,7 +271,7 @@ export async function processItem(itemId: string): Promise<void> {
         updates.github_url = item.source_url
       } else if (extractedEntities.repos && extractedEntities.repos.length > 0) {
         updates.github_url = extractedEntities.repos[0]
-        console.log('Setting github_url:', updates.github_url)
+        logger.info({ githubUrl: updates.github_url }, 'Setting github_url')
       }
       updates.github_metadata = {
         stars: githubMetadata.stars,
@@ -287,7 +288,7 @@ export async function processItem(itemId: string): Promise<void> {
     await supabase.from('items').update(updates).eq('id', itemId)
 
   } catch (error) {
-    console.error('Processing error:', error)
+    logger.error({ err: error, itemId }, 'Processing error')
     await supabase
       .from('items')
       .update({

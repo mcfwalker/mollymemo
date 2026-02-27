@@ -3,6 +3,7 @@
 
 import { createServiceClient } from '@/lib/supabase'
 import type { ContainerActivity, CrossReference, ProjectMatch } from './generator'
+import logger from '@/lib/logger'
 
 // Get container activity within the digest window
 export async function getContainerActivity(
@@ -18,7 +19,7 @@ export async function getContainerActivity(
     .eq('containers.user_id', userId)
 
   if (error || !data) {
-    console.error('Error fetching container activity:', error)
+    logger.error({ err: error, userId }, 'Error fetching container activity')
     return []
   }
 

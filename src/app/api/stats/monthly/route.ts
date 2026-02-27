@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getCurrentUserId } from '@/lib/auth'
 import { MonthStats } from '@/lib/supabase'
+import logger from '@/lib/logger'
 
 /**
  * Get monthly cost breakdown for the current user.
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     .order('captured_at', { ascending: false })
 
   if (error) {
-    console.error('Error fetching monthly stats:', error)
+    logger.error({ err: error }, 'Error fetching monthly stats')
     return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 })
   }
 

@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getCurrentUserId } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 /**
  * Get aggregated cost statistics for the current user.
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     .or('openai_cost.not.is.null,grok_cost.not.is.null,repo_extraction_cost.not.is.null')
 
   if (itemsError) {
-    console.error('Error fetching item stats:', itemsError)
+    logger.error({ err: itemsError }, 'Error fetching item stats')
     return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 })
   }
 
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
     .or('anthropic_cost.not.is.null,tts_cost.not.is.null')
 
   if (digestsError) {
-    console.error('Error fetching digest stats:', digestsError)
+    logger.error({ err: digestsError }, 'Error fetching digest stats')
     return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 })
   }
 

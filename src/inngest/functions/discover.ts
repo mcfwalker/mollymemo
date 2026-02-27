@@ -3,6 +3,7 @@
 import { inngest } from "../client";
 import { createServiceClient } from "@/lib/supabase";
 import { searchHN } from "@/lib/discovery/hackernews";
+import logger from "@/lib/logger";
 
 export const discoverContent = inngest.createFunction(
   {
@@ -125,7 +126,7 @@ export const discoverContent = inngest.createFunction(
           if (!error) stored++;
         }
 
-        console.log(`Stored ${stored} new memos for user ${user.id}`);
+        logger.info({ stored, userId: user.id }, 'Stored new memos');
         return stored;
       });
 

@@ -25,6 +25,7 @@ import {
   getUsersForDigestNow,
   DigestUser,
 } from '@/lib/digest'
+import logger from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300 // 5 minutes max for processing multiple users
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
     // Production mode: find users whose digest time is now
     const usersToProcess = await getUsersForDigestNow()
 
-    console.log(`Found ${usersToProcess.length} users for digest at this hour`)
+    logger.info({ userCount: usersToProcess.length }, 'Found users for digest at this hour')
 
     const results: Array<{ userId: string; success: boolean; error?: string }> =
       []
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
         await generateAndSendDigest(user, frequency)
         results.push({ userId: user.id, success: true })
       } catch (error) {
-        console.error(`Failed to generate digest for user ${user.id}:`, error)
+        logger.error({ err: error, userId: user.id }, 'Failed to generate digest for user')
         results.push({
           userId: user.id,
           success: false,
@@ -108,7 +109,7 @@ export async function GET(request: NextRequest) {
       results,
     })
   } catch (error) {
-    console.error('Digest cron error:', error)
+    logger.error({ err: error }, 'Digest cron error')
     return NextResponse.json(
       { error: 'Internal error', details: String(error) },
       { status: 500 }

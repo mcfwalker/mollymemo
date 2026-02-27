@@ -7,6 +7,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { inngest } from "../client";
 import { createServiceClient } from "@/lib/supabase";
 import { sendReportEmail } from "@/lib/email";
+import logger from "@/lib/logger";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -68,7 +69,7 @@ export const generateDailyReport = inngest.createFunction(
             .order("captured_at", { ascending: false });
 
           if (error) {
-            console.error(`Failed to fetch items for ${user.id}:`, error);
+            logger.error({ err: error, userId: user.id }, 'Failed to fetch items');
             return [];
           }
           return data || [];
@@ -77,7 +78,7 @@ export const generateDailyReport = inngest.createFunction(
 
       // Skip if no items captured in window
       if (items.length === 0) {
-        console.log(`No items for user ${user.id} in 24h window, skipping`);
+        logger.info({ userId: user.id }, 'No items in 24h window, skipping');
         continue;
       }
 
@@ -205,8 +206,9 @@ export const generateDailyReport = inngest.createFunction(
           throw new Error(`Failed to store report: ${error.message}`);
         }
 
-        console.log(
-          `Daily report stored for user ${user.id}: "${report.title}" (${items.length} items, cost: $${report.cost.toFixed(4)})`
+        logger.info(
+          { userId: user.id, title: report.title, itemCount: items.length, cost: report.cost },
+          'Daily report stored'
         );
         return inserted.id;
       });
@@ -230,7 +232,7 @@ export const generateDailyReport = inngest.createFunction(
             .update({ emailed_at: new Date().toISOString() })
             .eq("id", reportId);
 
-          console.log(`Daily report emailed to ${user.email}`);
+          logger.info({ email: user.email }, 'Daily report emailed');
         });
       }
 
@@ -490,7 +492,7 @@ export const generateWeeklyReport = inngest.createFunction(
 
       // Skip if no daily reports this week
       if (weekData.dailies.length === 0) {
-        console.log(`No daily reports for user ${user.id} this week, skipping`);
+        logger.info({ userId: user.id }, 'No daily reports this week, skipping');
         continue;
       }
 
@@ -566,8 +568,9 @@ export const generateWeeklyReport = inngest.createFunction(
           throw new Error(`Failed to store weekly report: ${error.message}`);
         }
 
-        console.log(
-          `Weekly report stored for user ${user.id}: "${report.title}" (${weekData.dailies.length} dailies synthesized, cost: $${report.cost.toFixed(4)})`
+        logger.info(
+          { userId: user.id, title: report.title, dailiesCount: weekData.dailies.length, cost: report.cost },
+          'Weekly report stored'
         );
         return inserted.id;
       });
@@ -591,7 +594,7 @@ export const generateWeeklyReport = inngest.createFunction(
             .update({ emailed_at: new Date().toISOString() })
             .eq("id", weeklyReportId);
 
-          console.log(`Weekly report emailed to ${user.email}`);
+          logger.info({ email: user.email }, 'Weekly report emailed');
         });
       }
 

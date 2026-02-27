@@ -1,6 +1,7 @@
 // Interest extraction and management for the interest graph
 
 import { chatCompletion, parseJsonResponse } from '@/lib/openai-client'
+import logger from '@/lib/logger'
 
 export interface Interest {
   type: 'topic' | 'tool' | 'domain' | 'person' | 'repo'
@@ -76,7 +77,7 @@ Example: {"topics": ["semantic-search"], "tools": ["pgvector"], "people": [], "r
 
     return { interests, cost }
   } catch (error) {
-    console.error('Interest extraction error:', error)
+    logger.error({ err: error }, 'Interest extraction error')
     return null
   }
 }

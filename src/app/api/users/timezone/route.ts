@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getCurrentUserId } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 /**
  * Update the user's timezone.
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
     .eq('id', userId)
 
   if (error) {
-    console.error('Failed to update timezone:', error)
+    logger.error({ err: error }, 'Failed to update timezone')
     return NextResponse.json({ error: 'Failed to update' }, { status: 500 })
   }
 

@@ -1,5 +1,7 @@
 // Grok API integration for X content and JS-rendered articles
 
+import logger from '@/lib/logger'
+
 // Grok-4-1-fast pricing (per 1M tokens)
 const GROK_INPUT_PRICE = 3
 const GROK_OUTPUT_PRICE = 15
@@ -23,7 +25,7 @@ interface GrokXContent {
 export async function fetchXContentWithGrok(url: string): Promise<GrokXContent | null> {
   const apiKey = process.env.XAI_API_KEY
   if (!apiKey) {
-    console.error('XAI_API_KEY not configured')
+    logger.error('XAI_API_KEY not configured')
     return null
   }
 
@@ -71,12 +73,12 @@ Format your response as JSON:
 
     if (!response.ok) {
       const error = await response.text()
-      console.error(`Grok API error: ${response.status}`, error)
+      logger.error({ status: response.status, body: error }, 'Grok API error')
       return null
     }
 
     const data = await response.json()
-    console.log('Grok API raw response:', JSON.stringify(data, null, 2))
+    logger.debug({ response: data }, 'Grok API raw response')
 
     // Calculate cost from usage
     const usage = data.usage || {}
@@ -105,8 +107,8 @@ Format your response as JSON:
       .map((a: { url?: string }) => a.url)
       .filter(Boolean)
 
-    console.log('Grok extracted content:', content?.slice(0, 500))
-    console.log('Grok citations:', citations)
+    logger.info({ contentPreview: content?.slice(0, 500) }, 'Grok extracted content')
+    logger.info({ citations }, 'Grok citations')
 
     // Try to parse as JSON, fall back to raw content
     let parsed
@@ -115,10 +117,10 @@ Format your response as JSON:
       const jsonMatch = content.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         parsed = JSON.parse(jsonMatch[0])
-        console.log('Grok parsed JSON:', parsed)
+        logger.debug({ parsed }, 'Grok parsed JSON')
       }
     } catch (parseError) {
-      console.error('Grok JSON parse error:', parseError)
+      logger.error({ err: parseError }, 'Grok JSON parse error')
       parsed = null
     }
 
@@ -152,7 +154,7 @@ Format your response as JSON:
       cost,
     }
   } catch (error) {
-    console.error('Grok X fetch error:', error)
+    logger.error({ err: error }, 'Grok X fetch error')
     return null
   }
 }
@@ -161,7 +163,7 @@ Format your response as JSON:
 export async function fetchArticleWithGrok(url: string): Promise<GrokResponse | null> {
   const apiKey = process.env.XAI_API_KEY
   if (!apiKey) {
-    console.error('XAI_API_KEY not configured')
+    logger.error('XAI_API_KEY not configured')
     return null
   }
 
@@ -204,7 +206,7 @@ Format your response as JSON:
 
     if (!response.ok) {
       const error = await response.text()
-      console.error(`Grok API error: ${response.status}`, error)
+      logger.error({ status: response.status, body: error }, 'Grok API error')
       return null
     }
 
@@ -242,7 +244,7 @@ Format your response as JSON:
       cost,
     }
   } catch (error) {
-    console.error('Grok article fetch error:', error)
+    logger.error({ err: error }, 'Grok article fetch error')
     return null
   }
 }

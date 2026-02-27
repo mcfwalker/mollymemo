@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { inngest } from '@/inngest/client'
 import { getCurrentUserId } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 /**
  * Get a single item by ID.
@@ -93,14 +94,14 @@ export async function PATCH(
       .single()
 
     if (error) {
-      console.error('Update error:', error)
+      logger.error({ err: error }, 'Item update error')
       return NextResponse.json({ error: 'Failed to update' }, { status: 500 })
     }
 
     return NextResponse.json(data)
 
   } catch (error) {
-    console.error('PATCH error:', error)
+    logger.error({ err: error }, 'Item PATCH error')
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 }
@@ -131,7 +132,7 @@ export async function DELETE(
     .eq('user_id', userId)
 
   if (error) {
-    console.error('Delete error:', error)
+    logger.error({ err: error }, 'Item delete error')
     return NextResponse.json({ error: 'Failed to delete' }, { status: 500 })
   }
 

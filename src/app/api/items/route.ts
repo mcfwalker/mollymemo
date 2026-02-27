@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { sanitizeSearchInput } from '@/lib/security'
 import { getCurrentUserId } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 /**
  * Get items for the authenticated user with filtering and pagination.
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
   const { data, error, count } = await query
 
   if (error) {
-    console.error('Query error:', error)
+    logger.error({ err: error }, 'Items query error')
     return NextResponse.json({ error: 'Failed to fetch items' }, { status: 500 })
   }
 

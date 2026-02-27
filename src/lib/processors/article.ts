@@ -2,6 +2,7 @@
 
 import { Readability } from '@mozilla/readability'
 import { JSDOM } from 'jsdom'
+import logger from '@/lib/logger'
 
 export interface ArticleMetadata {
   title: string | null
@@ -57,7 +58,7 @@ function extractFromHtml(url: string, html: string): ArticleMetadata | null {
   const article = reader.parse()
 
   if (!article) {
-    console.error('Readability failed to parse article')
+    logger.error('Readability failed to parse article')
     return null
   }
 
@@ -104,7 +105,7 @@ export async function processArticle(url: string): Promise<ArticleMetadata | nul
     })
 
     if (!response.ok) {
-      console.error(`Article fetch error: ${response.status}`)
+      logger.error({ status: response.status }, 'Article fetch error')
       return null
     }
 
@@ -150,7 +151,7 @@ export async function processArticle(url: string): Promise<ArticleMetadata | nul
     const html = await response.text()
     return extractFromHtml(url, html)
   } catch (error) {
-    console.error('Article processing error:', error)
+    logger.error({ err: error }, 'Article processing error')
     return null
   }
 }

@@ -32,6 +32,7 @@ import {
   DigestCommand,
 } from '@/lib/digest-commands'
 import { generateAndSendDigest, DigestUser } from '@/lib/digest'
+import logger from '@/lib/logger'
 
 interface TelegramUpdate {
   message?: {
@@ -118,7 +119,7 @@ async function handleDigestCommand(
 function verifyTelegramSecret(request: NextRequest): boolean {
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET
   if (!secret) {
-    console.error('TELEGRAM_WEBHOOK_SECRET not configured — rejecting request')
+    logger.error('TELEGRAM_WEBHOOK_SECRET not configured — rejecting request')
     return false
   }
 
@@ -201,7 +202,7 @@ export async function POST(request: NextRequest) {
                 molly_context: user.molly_context,
               } as DigestUser)
             } catch (error) {
-              console.error('Failed to generate digest:', error)
+              logger.error({ err: error }, 'Failed to generate digest')
               await sendMessage(chatId, 'Failed to generate digest. Try again later.')
             }
           })
@@ -270,7 +271,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error || !item) {
-      console.error('Insert error:', error)
+      logger.error({ err: error }, 'Telegram item insert error')
       await sendMessage(chatId, 'Failed to capture - check the web app')
       return NextResponse.json({ ok: true })
     }
@@ -292,7 +293,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('Telegram webhook error:', error)
+    logger.error({ err: error }, 'Telegram webhook error')
     return NextResponse.json({ ok: true })
   }
 }

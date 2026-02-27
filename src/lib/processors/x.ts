@@ -1,6 +1,7 @@
 // X/Twitter processor - uses Grok API for full content, falls back to oembed
 
 import { fetchXContentWithGrok } from './grok'
+import logger from '@/lib/logger'
 
 interface XMetadata {
   text: string
@@ -26,7 +27,7 @@ async function processXWithOembed(url: string): Promise<XMetadata | null> {
     const response = await fetch(oembedUrl)
 
     if (!response.ok) {
-      console.error(`X oembed error: ${response.status}`)
+      logger.error({ status: response.status }, 'X oembed error')
       return null
     }
 
@@ -85,7 +86,7 @@ async function processXWithOembed(url: string): Promise<XMetadata | null> {
       grokCost: 0,
     }
   } catch (error) {
-    console.error('X oembed error:', error)
+    logger.error({ err: error }, 'X oembed error')
     return null
   }
 }
@@ -119,28 +120,28 @@ async function processXWithGrok(url: string): Promise<XMetadata | null> {
 export async function processX(url: string): Promise<XMetadata | null> {
   // Try Grok first (if API key is configured)
   if (process.env.XAI_API_KEY) {
-    console.log('Processing X content with Grok API...', url)
+    logger.info({ url }, 'Processing X content with Grok API')
     const grokResult = await processXWithGrok(url)
     if (grokResult) {
-      console.log('Grok succeeded:', {
+      logger.info({
         textLength: grokResult.text?.length,
         authorName: grokResult.authorName,
-        summary: grokResult.summary?.slice(0, 100),
+        summaryPreview: grokResult.summary?.slice(0, 100),
         usedGrok: grokResult.usedGrok
-      })
+      }, 'Grok succeeded')
       return grokResult
     }
-    console.log('Grok API failed, falling back to oembed...')
+    logger.info('Grok API failed, falling back to oembed')
   } else {
-    console.log('XAI_API_KEY not configured, using oembed...')
+    logger.info('XAI_API_KEY not configured, using oembed')
   }
 
   // Fallback to oembed
   const oembedResult = await processXWithOembed(url)
-  console.log('Oembed result:', {
+  logger.info({
     textLength: oembedResult?.text?.length,
     authorName: oembedResult?.authorName,
     isLinkOnly: oembedResult?.isLinkOnly
-  })
+  }, 'Oembed result')
   return oembedResult
 }

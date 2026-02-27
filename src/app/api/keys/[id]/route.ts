@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getCurrentUserId } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 /**
  * Revoke an API key by setting revoked_at timestamp (soft delete).
@@ -38,7 +39,7 @@ export async function DELETE(
     .is('revoked_at', null)
 
   if (error) {
-    console.error('Failed to revoke API key:', error)
+    logger.error({ err: error }, 'Failed to revoke API key')
     return NextResponse.json({ error: 'Failed to revoke API key' }, { status: 500 })
   }
 

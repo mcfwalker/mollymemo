@@ -1,5 +1,7 @@
 // Hacker News search via Algolia API (free, no auth required)
 
+import logger from '@/lib/logger'
+
 export interface HNResult {
   id: string
   title: string
@@ -43,7 +45,7 @@ export async function searchHN(
   try {
     const response = await fetch(url)
     if (!response.ok) {
-      console.error(`HN Algolia error: ${response.status}`)
+      logger.error({ status: response.status }, 'HN Algolia error')
       return []
     }
 
@@ -66,7 +68,7 @@ export async function searchHN(
       createdAt: new Date(hit.created_at),
     }))
   } catch (error) {
-    console.error('HN search error:', error)
+    logger.error({ err: error }, 'HN search error')
     return []
   }
 }

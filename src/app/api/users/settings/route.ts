@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getCurrentUserId } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 /**
  * Get current user settings.
@@ -89,7 +90,7 @@ export async function PATCH(request: NextRequest) {
     .eq('id', userId)
 
   if (error) {
-    console.error('Failed to update settings:', error)
+    logger.error({ err: error }, 'Failed to update settings')
     return NextResponse.json({ error: 'Failed to update' }, { status: 500 })
   }
 

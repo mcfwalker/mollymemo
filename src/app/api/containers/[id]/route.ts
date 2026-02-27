@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getCurrentUserId } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 export async function GET(
   request: NextRequest,
@@ -66,7 +67,7 @@ export async function PATCH(
       .single()
 
     if (error) {
-      console.error('Container update error:', error)
+      logger.error({ err: error }, 'Container update error')
       return NextResponse.json({ error: 'Failed to update container' }, { status: 500 })
     }
 
@@ -116,7 +117,7 @@ export async function DELETE(
     .eq('user_id', userId)
 
   if (error) {
-    console.error('Container delete error:', error)
+    logger.error({ err: error }, 'Container delete error')
     return NextResponse.json({ error: 'Failed to delete container' }, { status: 500 })
   }
 

@@ -1,6 +1,8 @@
 // Shared OpenAI chat completion client
 // Consolidates fetch, error handling, cost calculation, and JSON parsing
 
+import logger from '@/lib/logger'
+
 // GPT-4o-mini pricing (per token)
 const GPT4O_MINI_INPUT_COST = 0.15 / 1_000_000
 const GPT4O_MINI_OUTPUT_COST = 0.60 / 1_000_000
@@ -31,7 +33,7 @@ export async function chatCompletion(
 ): Promise<ChatCompletionResult | null> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
-    console.error('OPENAI_API_KEY not configured')
+    logger.error('OPENAI_API_KEY not configured')
     return null
   }
 
@@ -51,7 +53,7 @@ export async function chatCompletion(
 
   if (!response.ok) {
     const error = await response.text()
-    console.error(`OpenAI API error: ${response.status}`, error)
+    logger.error({ status: response.status, error }, 'OpenAI API error')
     return null
   }
 
@@ -59,7 +61,7 @@ export async function chatCompletion(
   const text = data.choices?.[0]?.message?.content
 
   if (!text) {
-    console.error('No response from OpenAI')
+    logger.error('No response from OpenAI')
     return null
   }
 

@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes, createHash } from 'crypto'
 import { createServiceClient } from '@/lib/supabase'
 import { getCurrentUserId } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 /**
  * Generate a new API key.
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    console.error('Failed to create API key:', error)
+    logger.error({ err: error }, 'Failed to create API key')
     return NextResponse.json({ error: 'Failed to create API key' }, { status: 500 })
   }
 
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('Failed to list API keys:', error)
+    logger.error({ err: error }, 'Failed to list API keys')
     return NextResponse.json({ error: 'Failed to list API keys' }, { status: 500 })
   }
 

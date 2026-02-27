@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase'
+import logger from '@/lib/logger'
 
 const TELEGRAM_API = 'https://api.telegram.org/bot'
 
@@ -48,7 +49,7 @@ export async function sendMessage(
 ): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN
   if (!token) {
-    console.error('TELEGRAM_BOT_TOKEN not configured')
+    logger.error('TELEGRAM_BOT_TOKEN not configured')
     return false
   }
 
@@ -64,13 +65,14 @@ export async function sendMessage(
     })
 
     if (!response.ok) {
-      console.error('Telegram API error:', await response.text())
+      const body = await response.text()
+      logger.error({ status: response.status, body }, 'Telegram API error')
       return false
     }
 
     return true
   } catch (error) {
-    console.error('Failed to send Telegram message:', error)
+    logger.error({ err: error, chatId }, 'Failed to send Telegram message')
     return false
   }
 }

@@ -12,6 +12,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
+import logger from '@/lib/logger'
 
 function validateServiceKey(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization')
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    console.error('Project anchor upsert error:', error)
+    logger.error({ err: error }, 'Project anchor upsert error')
     return NextResponse.json({ error: 'Failed to upsert project anchor' }, { status: 500 })
   }
 
@@ -95,7 +96,7 @@ export async function DELETE(request: NextRequest) {
     .eq('external_project_id', externalProjectId)
 
   if (error) {
-    console.error('Project anchor delete error:', error)
+    logger.error({ err: error }, 'Project anchor delete error')
     return NextResponse.json({ error: 'Failed to delete project anchor' }, { status: 500 })
   }
 
@@ -124,7 +125,7 @@ export async function GET(request: NextRequest) {
     .order('updated_at', { ascending: false })
 
   if (error) {
-    console.error('Project anchors list error:', error)
+    logger.error({ err: error }, 'Project anchors list error')
     return NextResponse.json({ error: 'Failed to list project anchors' }, { status: 500 })
   }
 

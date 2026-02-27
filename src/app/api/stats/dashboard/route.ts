@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getCurrentUserId } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 interface ItemRow {
   captured_at: string
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
     .order('captured_at', { ascending: false })
 
   if (itemsError) {
-    console.error('Error fetching items:', itemsError)
+    logger.error({ err: itemsError }, 'Error fetching items')
     return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
   }
 
@@ -85,7 +86,7 @@ export async function GET(request: NextRequest) {
     .order('generated_at', { ascending: false })
 
   if (digestsError) {
-    console.error('Error fetching digests:', digestsError)
+    logger.error({ err: digestsError }, 'Error fetching digests')
     return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
   }
 

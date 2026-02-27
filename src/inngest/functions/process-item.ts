@@ -10,6 +10,7 @@ import {
 } from "@/lib/processors/repo-extractor";
 import { classify } from "@/lib/processors/classifier";
 import { sendMessage } from "@/lib/telegram";
+import logger from "@/lib/logger";
 
 // Type for GitHub metadata from processGitHub
 type GitHubMetadata = Awaited<ReturnType<typeof processGitHub>>;
@@ -53,12 +54,10 @@ export const processItem = inngest.createFunction(
       const eventData = event.data as unknown as ItemCapturedData;
       const { itemId, sourceType, sourceUrl, chatId } = eventData;
 
-      console.error("Process item failed:", {
-        itemId,
-        sourceType,
-        sourceUrl,
-        error: error instanceof Error ? error.message : error,
-      });
+      logger.error(
+        { itemId, sourceType, sourceUrl, err: error instanceof Error ? error : undefined },
+        'Process item failed'
+      );
 
       // Update item with failure status
       const supabase = createServiceClient();
@@ -406,7 +405,7 @@ export const processItem = inngest.createFunction(
         .single();
 
       if (!processed || !processed.title) {
-        console.log("Skipping container assignment - no title");
+        logger.info({ itemId }, 'Skipping container assignment - no title');
         return null;
       }
 
@@ -436,7 +435,7 @@ export const processItem = inngest.createFunction(
       );
 
       if (!assignment) {
-        console.log("Container assignment returned null");
+        logger.info({ itemId }, 'Container assignment returned null');
         return null;
       }
 
@@ -447,8 +446,9 @@ export const processItem = inngest.createFunction(
         assignment
       );
 
-      console.log(
-        `Assigned item ${itemId} to containers: ${result.containerNames.join(", ")}, cost: $${assignment.cost.toFixed(6)}`
+      logger.info(
+        { itemId, containerNames: result.containerNames, cost: assignment.cost },
+        'Assigned item to containers'
       );
 
       return {
@@ -469,7 +469,7 @@ export const processItem = inngest.createFunction(
         .single();
 
       if (!processed || !processed.title) {
-        console.log("Skipping embedding - no title");
+        logger.info({ itemId }, 'Skipping embedding - no title');
         return;
       }
 
@@ -488,7 +488,7 @@ export const processItem = inngest.createFunction(
           })
           .eq("id", itemId);
 
-        console.log(`Embedded item ${itemId}, cost: $${result.cost.toFixed(6)}`);
+        logger.info({ itemId, cost: result.cost }, 'Embedded item');
       }
     });
 
@@ -504,7 +504,7 @@ export const processItem = inngest.createFunction(
         .single();
 
       if (!processed || !processed.title) {
-        console.log("Skipping interest extraction - no title");
+        logger.info({ itemId }, 'Skipping interest extraction - no title');
         return;
       }
 
@@ -517,7 +517,7 @@ export const processItem = inngest.createFunction(
       });
 
       if (!result || result.interests.length === 0) {
-        console.log("No interests extracted");
+        logger.info({ itemId }, 'No interests extracted');
         return;
       }
 
@@ -558,7 +558,7 @@ export const processItem = inngest.createFunction(
         }
       }
 
-      console.log(`Extracted ${result.interests.length} interests, cost: $${result.cost.toFixed(6)}`);
+      logger.info({ itemId, interestCount: result.interests.length, cost: result.cost }, 'Extracted interests');
     });
 
     // Step 10: Notify user (if Telegram capture)

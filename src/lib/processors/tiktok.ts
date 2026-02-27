@@ -2,6 +2,7 @@
 
 import { extractGitHubUrls } from './detect'
 import { extractReposFromTranscript } from './repo-extractor'
+import logger from '@/lib/logger'
 
 interface TikTokResult {
   transcript: string
@@ -25,7 +26,7 @@ async function getTikTokMetadata(tiktokUrl: string): Promise<TikTokMetadata | nu
     })
 
     if (!response.ok) {
-      console.error('tikwm API error:', response.status)
+      logger.error({ status: response.status }, 'tikwm API error')
       return null
     }
 
@@ -33,7 +34,7 @@ async function getTikTokMetadata(tiktokUrl: string): Promise<TikTokMetadata | nu
     const videoUrl = data?.data?.play || data?.data?.hdplay || data?.data?.wmplay
 
     if (!videoUrl) {
-      console.error('No video URL in tikwm response:', JSON.stringify(data))
+      logger.error({ response: data }, 'No video URL in tikwm response')
       return null
     }
 
@@ -43,7 +44,7 @@ async function getTikTokMetadata(tiktokUrl: string): Promise<TikTokMetadata | nu
       author: data?.data?.author?.nickname || null,
     }
   } catch (error) {
-    console.error('Error getting TikTok metadata:', error)
+    logger.error({ err: error }, 'Error getting TikTok metadata')
     return null
   }
 }
@@ -58,7 +59,7 @@ async function transcribeWithOpenAI(
     // Download video first (OpenAI requires file upload)
     const videoResponse = await fetch(videoUrl)
     if (!videoResponse.ok) {
-      console.error('Failed to download video:', videoResponse.status, videoResponse.statusText)
+      logger.error({ status: videoResponse.status, statusText: videoResponse.statusText }, 'Failed to download video')
       return null
     }
 
@@ -76,7 +77,7 @@ async function transcribeWithOpenAI(
 
     if (!response.ok) {
       const error = await response.text()
-      console.error('OpenAI transcription error:', response.status, error)
+      logger.error({ status: response.status, body: error }, 'OpenAI transcription error')
       return null
     }
 
@@ -84,7 +85,7 @@ async function transcribeWithOpenAI(
     // Return empty string (not null) when no speech detected
     return data.text ?? ''
   } catch (error) {
-    console.error('Transcription error:', error)
+    logger.error({ err: error }, 'Transcription error')
     return null
   }
 }
@@ -92,7 +93,7 @@ async function transcribeWithOpenAI(
 export async function processTikTok(url: string): Promise<TikTokResult | null> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
-    console.error('OPENAI_API_KEY not configured')
+    logger.error('OPENAI_API_KEY not configured')
     return null
   }
 
@@ -100,14 +101,14 @@ export async function processTikTok(url: string): Promise<TikTokResult | null> {
     // Step 1: Get video URL and metadata from TikTok
     const metadata = await getTikTokMetadata(url)
     if (!metadata) {
-      console.error('Could not get TikTok metadata')
+      logger.error('Could not get TikTok metadata')
       return null
     }
 
     // Step 2: Transcribe with OpenAI
     const transcriptResult = await transcribeWithOpenAI(metadata.videoUrl, apiKey)
     if (transcriptResult === null) {
-      console.error('Transcription failed')
+      logger.error('Transcription failed')
       return null
     }
 
@@ -115,13 +116,13 @@ export async function processTikTok(url: string): Promise<TikTokResult | null> {
     let transcript = transcriptResult
     let usingCaptionFallback = false
     if (!transcript && metadata.title) {
-      console.log('No speech detected, using TikTok caption as fallback')
+      logger.info('No speech detected, using TikTok caption as fallback')
       transcript = `[Caption]: ${metadata.title}`
       usingCaptionFallback = true
     }
 
     if (!transcript) {
-      console.error('No transcript or caption available')
+      logger.error('No transcript or caption available')
       return null
     }
 
@@ -143,7 +144,7 @@ export async function processTikTok(url: string): Promise<TikTokResult | null> {
       repoExtractionCost,
     }
   } catch (error) {
-    console.error('TikTok processing error:', error)
+    logger.error({ err: error }, 'TikTok processing error')
     return null
   }
 }

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { createServerClient as createSSRServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import logger from '@/lib/logger'
 
 // Client for browser (uses anon key) - for client components
 export function createBrowserClient() {
@@ -161,7 +162,7 @@ export async function getAllTimeStats(supabase: ReturnType<typeof createBrowserC
     .or('openai_cost.not.is.null,grok_cost.not.is.null,repo_extraction_cost.not.is.null')
 
   if (itemsError) {
-    console.error('Error fetching item stats:', itemsError)
+    logger.error({ err: itemsError }, 'Error fetching item stats')
     return { entryCount: 0, totalCost: 0, avgCost: 0 }
   }
 
@@ -172,7 +173,7 @@ export async function getAllTimeStats(supabase: ReturnType<typeof createBrowserC
     .or('anthropic_cost.not.is.null,tts_cost.not.is.null')
 
   if (digestsError) {
-    console.error('Error fetching digest stats:', digestsError)
+    logger.error({ err: digestsError }, 'Error fetching digest stats')
   }
 
   const items = itemsData || []
@@ -200,7 +201,7 @@ export async function getMonthlyStats(supabase: ReturnType<typeof createBrowserC
     .order('captured_at', { ascending: false })
 
   if (error || !data) {
-    console.error('Error fetching monthly stats:', error)
+    logger.error({ err: error }, 'Error fetching monthly stats')
     return []
   }
 

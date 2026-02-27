@@ -1,6 +1,38 @@
 // Trend detection engine — algorithmic detectors + LLM narration
 
+import type { SupabaseClient } from '@supabase/supabase-js'
+import logger from '@/lib/logger'
+
 // --- Types ---
+
+interface ContainerRow {
+  id: string
+  name: string
+}
+
+interface ContainerItemRow {
+  container_id: string
+}
+
+interface UserInterestRow {
+  interest_type: string
+  value: string
+  occurrence_count: number
+  first_seen: string
+}
+
+interface ConvergenceRow {
+  container_a: string
+  container_b: string
+  shared_count: number
+}
+
+interface RawNarratedTrend {
+  trendType: string
+  title: string
+  description: string
+  strength: number
+}
 
 export interface VelocitySignal {
   type: 'velocity'
@@ -45,7 +77,7 @@ const VELOCITY_THRESHOLD = 3
 const VELOCITY_WINDOW_DAYS = 14
 
 export async function detectVelocity(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string
 ): Promise<VelocitySignal[]> {
   const { data: containers, error: cErr } = await supabase
@@ -56,7 +88,7 @@ export async function detectVelocity(
   if (cErr || !containers || containers.length === 0) return []
 
   const cutoff = new Date(Date.now() - VELOCITY_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString()
-  const containerIds = containers.map((c: any) => c.id)
+  const containerIds = (containers as ContainerRow[]).map((c) => c.id)
 
   const { data: recentItems, error: iErr } = await supabase
     .from('container_items')
@@ -94,7 +126,7 @@ const EMERGENCE_THRESHOLD = 2
 const EMERGENCE_WINDOW_DAYS = 14
 
 export async function detectEmergence(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string
 ): Promise<EmergenceSignal[]> {
   const cutoff = new Date(Date.now() - EMERGENCE_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString()
@@ -108,7 +140,7 @@ export async function detectEmergence(
 
   if (error || !data) return []
 
-  return data.map((row: any) => ({
+  return (data as UserInterestRow[]).map((row) => ({
     type: 'emergence' as const,
     interestType: row.interest_type,
     value: row.value,
@@ -123,7 +155,7 @@ const CONVERGENCE_THRESHOLD = 2
 const CONVERGENCE_WINDOW_DAYS = 30
 
 export async function detectConvergence(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string
 ): Promise<ConvergenceSignal[]> {
   const { data: containers, error: cErr } = await supabase
@@ -134,7 +166,7 @@ export async function detectConvergence(
   if (cErr || !containers || containers.length < 2) return []
 
   const containerMap = new Map<string, string>()
-  for (const c of containers) {
+  for (const c of containers as ContainerRow[]) {
     containerMap.set(c.id, c.name)
   }
 
@@ -148,9 +180,9 @@ export async function detectConvergence(
 
   if (error || !data) return []
 
-  return data
-    .filter((row: any) => containerMap.has(row.container_a) && containerMap.has(row.container_b))
-    .map((row: any) => ({
+  return (data as ConvergenceRow[])
+    .filter((row) => containerMap.has(row.container_a) && containerMap.has(row.container_b))
+    .map((row) => ({
       type: 'convergence' as const,
       containerA: { id: row.container_a, name: containerMap.get(row.container_a)! },
       containerB: { id: row.container_b, name: containerMap.get(row.container_b)! },
@@ -200,7 +232,7 @@ Return ONLY valid JSON, no markdown:
     const { cost } = completion
     const parsed = parseJsonResponse(completion.text) as Record<string, unknown[]>
 
-    const trends: NarratedTrend[] = (parsed.trends || []).map((t: any, i: number) => ({
+    const trends: NarratedTrend[] = ((parsed.trends || []) as RawNarratedTrend[]).map((t, i) => ({
       trendType: t.trendType,
       title: t.title,
       description: t.description,
@@ -210,7 +242,7 @@ Return ONLY valid JSON, no markdown:
 
     return { trends, cost }
   } catch (error) {
-    console.error('Trend narration error:', error)
+    logger.error({ err: error }, 'Trend narration error')
     return null
   }
 }

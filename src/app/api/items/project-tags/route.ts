@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getCurrentUserId } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   const userId = getCurrentUserId(request)
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
   })
 
   if (error) {
-    console.error('Project tags error:', error)
+    logger.error({ err: error }, 'Project tags error')
     return NextResponse.json({ error: 'Failed to fetch project tags' }, { status: 500 })
   }
 

@@ -2,6 +2,7 @@
 
 import { extractGitHubUrls } from './detect'
 import { extractReposFromTranscript } from './repo-extractor'
+import logger from '@/lib/logger'
 
 interface YouTubeResult {
   transcript: string
@@ -169,7 +170,7 @@ async function fetchTranscript(videoId: string): Promise<string | null> {
 export async function processYouTube(url: string): Promise<YouTubeResult | null> {
   const videoId = parseYouTubeVideoId(url)
   if (!videoId) {
-    console.error('Could not parse YouTube video ID from URL:', url)
+    logger.error({ url }, 'Could not parse YouTube video ID from URL')
     return null
   }
 
@@ -191,12 +192,12 @@ export async function processYouTube(url: string): Promise<YouTubeResult | null>
       fullTranscript = `${header}[Transcript]: ${transcript}`
     } else if (metadata) {
       // Fallback: use title/author when no captions
-      console.log('No transcript available, using oEmbed metadata as fallback')
+      logger.info('No transcript available, using oEmbed metadata as fallback')
       fullTranscript = `[Title]: ${metadata.title}\n[Author]: ${metadata.authorName}`
     }
 
     if (!fullTranscript) {
-      console.error('No transcript or metadata available for YouTube video:', videoId)
+      logger.error({ videoId }, 'No transcript or metadata available for YouTube video')
       return null
     }
 
@@ -218,7 +219,7 @@ export async function processYouTube(url: string): Promise<YouTubeResult | null>
       repoExtractionCost,
     }
   } catch (error) {
-    console.error('YouTube processing error:', error)
+    logger.error({ err: error }, 'YouTube processing error')
     return null
   }
 }

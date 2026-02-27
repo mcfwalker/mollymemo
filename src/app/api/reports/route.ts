@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getCurrentUserId } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   const userId = getCurrentUserId(request)
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
   const { data, count, error } = await query
 
   if (error) {
-    console.error('Error fetching reports:', error)
+    logger.error({ err: error }, 'Error fetching reports')
     return NextResponse.json({ error: 'Failed to fetch reports' }, { status: 500 })
   }
 

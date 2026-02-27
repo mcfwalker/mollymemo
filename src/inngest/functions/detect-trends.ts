@@ -9,6 +9,7 @@ import {
   narrateTrends,
   TrendSignal,
 } from "@/lib/trends";
+import logger from "@/lib/logger";
 
 export const detectTrends = inngest.createFunction(
   {
@@ -83,8 +84,9 @@ export const detectTrends = inngest.createFunction(
         }
 
         totalTrends += narrated.trends.length;
-        console.log(
-          `Stored ${narrated.trends.length} trends for user ${userId}, narration cost: $${narrated.cost.toFixed(6)}`
+        logger.info(
+          { trendsStored: narrated.trends.length, userId, cost: narrated.cost },
+          'Stored trends'
         );
       });
     }
@@ -96,7 +98,7 @@ export const detectTrends = inngest.createFunction(
         .lt("expires_at", new Date().toISOString());
 
       if (error) {
-        console.error("Failed to clean up expired trends:", error);
+        logger.error({ err: error }, 'Failed to clean up expired trends');
       }
     });
 

@@ -2,6 +2,7 @@
 
 import { domains, defaultDomain, getDomainPromptList } from '../config/domains'
 import { chatCompletion, parseJsonResponse } from '../openai-client'
+import logger from '@/lib/logger'
 
 interface ClassificationResult {
   title: string
@@ -26,7 +27,7 @@ export async function classify(content: {
   // Guard: refuse to classify when there's no meaningful content
   const hasContent = content.transcript || content.githubMetadata || content.pageContent
   if (!hasContent) {
-    console.error('Classifier skipped: no transcript, metadata, or page content provided')
+    logger.error('Classifier skipped: no transcript, metadata, or page content provided')
     return null
   }
 
@@ -80,11 +81,17 @@ Return ONLY valid JSON, no markdown or explanation.`
     if (!completion) return null
 
     const { text, cost } = completion
-    const result = parseJsonResponse(text) as Record<string, unknown>
+    const result = parseJsonResponse(text) as {
+      domain?: string
+      title?: string
+      summary?: string
+      content_type?: string
+      tags?: string[]
+    }
 
     // Validate domain against configured domains
     const validDomainSet = new Set([...Object.keys(domains), defaultDomain])
-    const returnedDomain = validDomainSet.has(result.domain) ? result.domain : defaultDomain
+    const returnedDomain = result.domain && validDomainSet.has(result.domain) ? result.domain : defaultDomain
 
     return {
       title: result.title || 'Untitled',
@@ -95,7 +102,7 @@ Return ONLY valid JSON, no markdown or explanation.`
       cost,
     }
   } catch (error) {
-    console.error('Classification error:', error)
+    logger.error({ err: error }, 'Classification error')
     return null
   }
 }

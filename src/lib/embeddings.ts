@@ -1,5 +1,7 @@
 // Embedding service using OpenAI text-embedding-3-small
 
+import logger from '@/lib/logger'
+
 // Pricing: $0.02 per 1M tokens
 const EMBEDDING_PRICE_PER_MILLION = 0.02
 
@@ -41,7 +43,7 @@ export function buildEmbeddingText(input: EmbeddingInput): string {
 export async function generateEmbedding(text: string): Promise<EmbeddingResult | null> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
-    console.error('OPENAI_API_KEY not configured')
+    logger.error('OPENAI_API_KEY not configured')
     return null
   }
 
@@ -60,7 +62,7 @@ export async function generateEmbedding(text: string): Promise<EmbeddingResult |
 
     if (!response.ok) {
       const error = await response.text()
-      console.error(`OpenAI Embeddings API error: ${response.status}`, error)
+      logger.error({ status: response.status, error }, 'OpenAI Embeddings API error')
       return null
     }
 
@@ -68,7 +70,7 @@ export async function generateEmbedding(text: string): Promise<EmbeddingResult |
     const embedding = data.data?.[0]?.embedding
 
     if (!embedding) {
-      console.error('No embedding returned from OpenAI')
+      logger.error('No embedding returned from OpenAI')
       return null
     }
 
@@ -78,7 +80,7 @@ export async function generateEmbedding(text: string): Promise<EmbeddingResult |
 
     return { embedding, cost }
   } catch (error) {
-    console.error('Embedding generation error:', error)
+    logger.error({ err: error }, 'Embedding generation error')
     return null
   }
 }

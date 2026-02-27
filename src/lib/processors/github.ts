@@ -1,6 +1,7 @@
 // GitHub repo processor
 
 import { parseGitHubUrl } from './detect'
+import logger from '@/lib/logger'
 
 interface GitHubMetadata {
   name: string
@@ -34,7 +35,7 @@ export async function processGitHub(url: string): Promise<GitHubMetadata | null>
     })
 
     if (!response.ok) {
-      console.error(`GitHub API error: ${response.status}`)
+      logger.error({ status: response.status }, 'GitHub API error')
       return null
     }
 
@@ -50,7 +51,7 @@ export async function processGitHub(url: string): Promise<GitHubMetadata | null>
       repo,
     }
   } catch (error) {
-    console.error('GitHub processing error:', error)
+    logger.error({ err: error }, 'GitHub processing error')
     return null
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getCurrentUserId } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 export async function GET(
   request: NextRequest,
@@ -33,7 +34,7 @@ export async function GET(
     .eq('container_id', id)
 
   if (ciError) {
-    console.error('Container items fetch error:', ciError)
+    logger.error({ err: ciError }, 'Container items fetch error')
     return NextResponse.json({ error: 'Failed to fetch container items' }, { status: 500 })
   }
 
@@ -50,7 +51,7 @@ export async function GET(
     .order('captured_at', { ascending: false })
 
   if (itemsError) {
-    console.error('Items fetch error:', itemsError)
+    logger.error({ err: itemsError }, 'Items fetch error')
     return NextResponse.json({ error: 'Failed to fetch items' }, { status: 500 })
   }
 
@@ -111,7 +112,7 @@ export async function POST(
       )
 
     if (insertError) {
-      console.error('Move item error:', insertError)
+      logger.error({ err: insertError }, 'Move item error')
       return NextResponse.json({ error: 'Failed to move item' }, { status: 500 })
     }
 
@@ -124,7 +125,7 @@ export async function POST(
         .eq('item_id', item_id)
 
       if (removeError) {
-        console.error('Remove from source error:', removeError)
+        logger.error({ err: removeError, fromContainerId: from_container_id }, 'Remove from source container error')
       }
     }
 

@@ -3,6 +3,7 @@ import { resolveUserId } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase'
 import { detectSourceType } from '@/lib/processors/detect'
 import { inngest } from '@/inngest/client'
+import logger from '@/lib/logger'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': process.env.NEXT_PUBLIC_APP_URL || 'https://mollymemo.com',
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error || !item) {
-    console.error('Capture insert error:', error)
+    logger.error({ err: error }, 'Capture insert error')
     return jsonResponse({ error: 'Failed to capture' }, 500)
   }
 

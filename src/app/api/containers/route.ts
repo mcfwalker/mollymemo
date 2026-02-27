@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getCurrentUserId } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   const userId = getCurrentUserId(request)
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     .order('item_count', { ascending: false })
 
   if (error) {
-    console.error('Containers fetch error:', error)
+    logger.error({ err: error }, 'Containers fetch error')
     return NextResponse.json({ error: 'Failed to fetch containers' }, { status: 500 })
   }
 

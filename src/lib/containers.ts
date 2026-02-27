@@ -2,6 +2,7 @@
 
 import { createServiceClient } from '@/lib/supabase'
 import { chatCompletion, parseJsonResponse } from '@/lib/openai-client'
+import logger from '@/lib/logger'
 
 export interface ContainerAssignment {
   existing: string[]          // IDs of existing containers to file into
@@ -91,24 +92,24 @@ Either array can be empty, but not both.`
 
     // Validate existing container IDs against known IDs
     const validIds = new Set(containers.map(c => c.id))
-    const validExisting = (parsed.existing || []).filter((id: string) => validIds.has(id))
+    const validExisting = ((parsed.existing || []) as string[]).filter((id) => validIds.has(id))
 
     // Validate new container specs
-    const validCreate: NewContainerSpec[] = (parsed.create || [])
-      .filter((spec: { name?: string }) => spec.name && spec.name.trim())
-      .map((spec: { name: string; description?: string }) => ({
+    const validCreate: NewContainerSpec[] = ((parsed.create || []) as { name: string; description?: string }[])
+      .filter((spec) => spec.name && spec.name.trim())
+      .map((spec) => ({
         name: spec.name.trim(),
         description: (spec.description || '').trim(),
       }))
 
     if (validExisting.length === 0 && validCreate.length === 0) {
-      console.warn('Container assignment returned no valid assignments')
+      logger.warn('Container assignment returned no valid assignments')
       return { existing: [], create: [], cost }
     }
 
     return { existing: validExisting, create: validCreate, cost }
   } catch (error) {
-    console.error('Container assignment error:', error)
+    logger.error({ err: error }, 'Container assignment error')
     return null
   }
 }
@@ -163,7 +164,7 @@ export async function applyContainerAssignment(
         .single()
 
       if (error) {
-        console.error('Failed to create container:', error)
+        logger.error({ err: error, containerName: spec.name }, 'Failed to create container')
         continue
       }
 
@@ -182,7 +183,7 @@ export async function applyContainerAssignment(
       )
 
     if (error) {
-      console.error(`Failed to add item to container ${containerId}:`, error)
+      logger.error({ err: error, containerId, itemId }, 'Failed to add item to container')
     }
   }
 
@@ -251,8 +252,8 @@ Return ONLY valid JSON, no markdown:
     const validIds = new Set(containers.map(c => c.id))
     const usedSources = new Set<string>()
 
-    const validMerges: MergeSuggestion[] = (parsed.merges || [])
-      .filter((m: { source?: string; target?: string; reason?: string }) => {
+    const validMerges: MergeSuggestion[] = ((parsed.merges || []) as { source?: string; target?: string; reason?: string }[])
+      .filter((m) => {
         if (!m.source || !m.target || !m.reason) return false
         if (!validIds.has(m.source) || !validIds.has(m.target)) return false
         if (m.source === m.target) return false
@@ -260,15 +261,15 @@ Return ONLY valid JSON, no markdown:
         usedSources.add(m.source)
         return true
       })
-      .map((m: { source: string; target: string; reason: string }) => ({
-        source: m.source,
-        target: m.target,
-        reason: m.reason,
+      .map((m) => ({
+        source: m.source!,
+        target: m.target!,
+        reason: m.reason!,
       }))
 
     return { merges: validMerges, cost }
   } catch (error) {
-    console.error('Merge suggestion error:', error)
+    logger.error({ err: error }, 'Merge suggestion error')
     return null
   }
 }
@@ -295,7 +296,7 @@ export async function executeMerge(
       .eq('container_id', merge.source)
 
     if (fetchError) {
-      console.error('Failed to fetch source items:', fetchError)
+      logger.error({ err: fetchError, sourceContainerId: merge.source }, 'Failed to fetch source items')
       return { success: false, itemsMoved: 0, error: fetchError.message }
     }
 
@@ -311,7 +312,7 @@ export async function executeMerge(
         )
 
       if (error) {
-        console.error(`Failed to move item ${itemId}:`, error)
+        logger.error({ err: error, itemId, targetContainerId: merge.target }, 'Failed to move item')
       }
     }
 
@@ -323,15 +324,15 @@ export async function executeMerge(
       .eq('id', merge.source)
 
     if (deleteError) {
-      console.error('Failed to delete source container:', deleteError)
+      logger.error({ err: deleteError, sourceContainerId: merge.source }, 'Failed to delete source container')
       return { success: false, itemsMoved: itemIds.length, error: deleteError.message }
     }
 
-    console.log(`Merged container ${merge.source} into ${merge.target}: ${itemIds.length} items moved. Reason: ${merge.reason}`)
+    logger.info({ source: merge.source, target: merge.target, itemsMoved: itemIds.length, reason: merge.reason }, 'Merged container')
 
     return { success: true, itemsMoved: itemIds.length }
   } catch (error) {
-    console.error('Merge execution error:', error)
+    logger.error({ err: error, source: merge.source, target: merge.target }, 'Merge execution error')
     return { success: false, itemsMoved: 0, error: String(error) }
   }
 }

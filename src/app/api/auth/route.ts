@@ -8,6 +8,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
+import logger from '@/lib/logger'
 
 /**
  * Initiate Google OAuth sign-in via Supabase.
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (error || !data.url) {
-      console.error('Google OAuth error:', error)
+      logger.error({ err: error }, 'Google OAuth error')
       return NextResponse.json({ error: 'Failed to initiate login' }, { status: 500 })
     }
 

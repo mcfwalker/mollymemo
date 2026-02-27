@@ -3,6 +3,7 @@
 import { inngest } from "../client";
 import { createServiceClient } from "@/lib/supabase";
 import { suggestMerges, executeMerge } from "@/lib/containers";
+import logger from "@/lib/logger";
 
 export const mergeContainers = inngest.createFunction(
   {
@@ -101,8 +102,9 @@ export const mergeContainers = inngest.createFunction(
 
         if (result.success) {
           totalMerges++;
-          console.log(
-            `Merged for user ${userId}: ${merge.reason} (${result.itemsMoved} items moved)`
+          logger.info(
+            { userId, reason: merge.reason, itemsMoved: result.itemsMoved },
+            'Merged containers'
           );
         }
       }

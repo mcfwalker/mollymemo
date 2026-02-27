@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
+import logger from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
     .order('strength', { ascending: false })
 
   if (error) {
-    console.error('Error fetching trends:', error)
+    logger.error({ err: error }, 'Error fetching trends')
     return NextResponse.json(
       { error: 'Failed to fetch trends' },
       { status: 500 }

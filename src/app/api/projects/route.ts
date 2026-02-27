@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getCurrentUserId } from '@/lib/auth'
+import logger from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   const userId = getCurrentUserId(request)
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     .order('name', { ascending: true })
 
   if (error) {
-    console.error('Projects list error:', error)
+    logger.error({ err: error }, 'Projects list error')
     return NextResponse.json({ error: 'Failed to list projects' }, { status: 500 })
   }
 

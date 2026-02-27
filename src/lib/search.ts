@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { generateEmbedding } from './embeddings'
+import logger from '@/lib/logger'
 
 export interface SearchResult {
   id: string
@@ -51,7 +52,7 @@ export async function semanticSearch(
   // Generate embedding for the query
   const embeddingResult = await generateEmbedding(query)
   if (!embeddingResult) {
-    console.error('Failed to generate query embedding')
+    logger.error('Failed to generate query embedding')
     return []
   }
 
@@ -74,7 +75,7 @@ export async function semanticSearch(
   const { data, error } = await supabase.rpc(rpcName, rpcParams)
 
   if (error) {
-    console.error('Semantic search error:', error)
+    logger.error({ err: error }, 'Semantic search error')
     return []
   }
 
@@ -118,7 +119,7 @@ export async function keywordSearch(
   const { data, error } = await q
 
   if (error) {
-    console.error('Keyword search error:', error)
+    logger.error({ err: error }, 'Keyword search error')
     return []
   }
 
@@ -162,7 +163,7 @@ export async function enrichWithContainers(
   })
 
   if (error) {
-    console.error('Container enrichment error:', error)
+    logger.error({ err: error }, 'Container enrichment error')
     return []
   }
 
