@@ -4,11 +4,25 @@ import { createServiceClient } from '@/lib/supabase'
 import { detectSourceType } from '@/lib/processors/detect'
 import { inngest } from '@/inngest/client'
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+}
+
+function jsonResponse(body: Record<string, unknown>, status: number) {
+  return NextResponse.json(body, { status, headers: CORS_HEADERS })
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS })
+}
+
 export async function POST(request: NextRequest) {
   // 1. Authenticate via API key or session
   const userId = await resolveUserId(request)
   if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return jsonResponse({ error: 'Unauthorized' }, 401)
   }
 
   // 2. Parse body and extract URL
@@ -16,12 +30,12 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    return jsonResponse({ error: 'Invalid JSON body' }, 400)
   }
 
   const { url } = body
   if (!url || typeof url !== 'string') {
-    return NextResponse.json({ error: 'Missing or invalid url field' }, { status: 400 })
+    return jsonResponse({ error: 'Missing or invalid url field' }, 400)
   }
 
   // 3. Validate URL format
@@ -29,7 +43,7 @@ export async function POST(request: NextRequest) {
   try {
     parsedUrl = new URL(url)
   } catch {
-    return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 })
+    return jsonResponse({ error: 'Invalid URL format' }, 400)
   }
 
   const supabase = createServiceClient()
@@ -45,7 +59,7 @@ export async function POST(request: NextRequest) {
     .limit(1)
 
   if (existing && existing.length > 0) {
-    return NextResponse.json({ error: 'Already captured recently' }, { status: 409 })
+    return jsonResponse({ error: 'Already captured recently' }, 409)
   }
 
   // 5. Detect source type and insert
@@ -64,7 +78,7 @@ export async function POST(request: NextRequest) {
 
   if (error || !item) {
     console.error('Capture insert error:', error)
-    return NextResponse.json({ error: 'Failed to capture' }, { status: 500 })
+    return jsonResponse({ error: 'Failed to capture' }, 500)
   }
 
   // 6. Send Inngest event for background processing
@@ -78,5 +92,5 @@ export async function POST(request: NextRequest) {
     },
   })
 
-  return NextResponse.json({ id: item.id, status: 'pending' }, { status: 201 })
+  return jsonResponse({ id: item.id, status: 'pending' }, 201)
 }
