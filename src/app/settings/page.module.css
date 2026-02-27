@@ -181,6 +181,95 @@
   margin-top: 16px;
 }
 
+/* API Key management */
+.button {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+.button:hover { opacity: 0.9; }
+.button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.keyReveal {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+}
+.keyWarning {
+  font-size: 13px;
+  color: var(--accent-foreground);
+  margin: 0 0 8px;
+  font-weight: 500;
+}
+.keyDisplay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.keyCode {
+  flex: 1;
+  padding: 8px;
+  font-size: 13px;
+  font-family: monospace;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  word-break: break-all;
+}
+.copyButton {
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.copyButton:hover { background: var(--border); }
+
+.keyRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+}
+.keyInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.keyName {
+  font-size: 14px;
+  color: var(--text);
+}
+.keyMeta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.revokeButton {
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.revokeButton:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
 @media (max-width: 768px) {
   .settingRow {
     flex-direction: column;

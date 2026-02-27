@@ -40,6 +40,21 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [apiKeys, setApiKeys] = useState<Array<{id: string, name: string, created_at: string, last_used_at: string | null}>>([])
+  const [newKey, setNewKey] = useState<string | null>(null)
+  const [generatingKey, setGeneratingKey] = useState(false)
+
+  async function fetchApiKeys() {
+    try {
+      const res = await fetch('/api/keys')
+      if (res.ok) {
+        const data = await res.json()
+        setApiKeys(data.keys)
+      }
+    } catch (err) {
+      console.error('Error fetching API keys:', err)
+    }
+  }
 
   useEffect(() => {
     async function fetchSettings() {
@@ -56,6 +71,7 @@ export default function SettingsPage() {
       }
     }
     fetchSettings()
+    fetchApiKeys()
   }, [])
 
   const updateSetting = async (updates: Partial<UserSettings>) => {
@@ -75,6 +91,37 @@ export default function SettingsPage() {
       console.error('Error updating settings:', err)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const generateKey = async () => {
+    setGeneratingKey(true)
+    try {
+      const res = await fetch('/api/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Chrome Extension' }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setNewKey(data.key)
+        await fetchApiKeys()
+      }
+    } catch (err) {
+      console.error('Error generating API key:', err)
+    } finally {
+      setGeneratingKey(false)
+    }
+  }
+
+  const revokeKey = async (id: string) => {
+    try {
+      const res = await fetch(`/api/keys/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setApiKeys((keys) => keys.filter((k) => k.id !== id))
+      }
+    } catch (err) {
+      console.error('Error revoking API key:', err)
     }
   }
 
@@ -120,6 +167,63 @@ export default function SettingsPage() {
               <option value="none">None</option>
             </select>
           </div>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>API Keys</h2>
+
+        <div className={styles.settingCard}>
+          <div className={styles.settingRow}>
+            <div className={styles.settingInfo}>
+              <span className={styles.settingLabel}>Chrome Extension</span>
+              <span className={styles.settingDescription}>
+                Generate an API key for the MollyMemo Chrome extension
+              </span>
+            </div>
+            <button
+              className={styles.button}
+              onClick={generateKey}
+              disabled={generatingKey}
+            >
+              {generatingKey ? 'Generating...' : 'Generate Key'}
+            </button>
+          </div>
+
+          {newKey && (
+            <div className={styles.keyReveal}>
+              <p className={styles.keyWarning}>
+                Copy this key now — it won&apos;t be shown again
+              </p>
+              <div className={styles.keyDisplay}>
+                <code className={styles.keyCode}>{newKey}</code>
+                <button
+                  className={styles.copyButton}
+                  onClick={() => navigator.clipboard.writeText(newKey)}
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+          )}
+
+          {apiKeys.map((k) => (
+            <div key={k.id} className={styles.keyRow}>
+              <div className={styles.keyInfo}>
+                <span className={styles.keyName}>{k.name}</span>
+                <span className={styles.keyMeta}>
+                  Created {new Date(k.created_at).toLocaleDateString()}
+                  {k.last_used_at && ` · Last used ${new Date(k.last_used_at).toLocaleDateString()}`}
+                </span>
+              </div>
+              <button
+                className={styles.revokeButton}
+                onClick={() => revokeKey(k.id)}
+              >
+                Revoke
+              </button>
+            </div>
+          ))}
         </div>
       </section>
 
