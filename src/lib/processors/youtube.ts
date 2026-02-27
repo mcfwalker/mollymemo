@@ -8,7 +8,9 @@ interface YouTubeResult {
   repoExtractionCost: number
 }
 
-const INNERTUBE_API_URL = 'https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8'
+// YouTube's public InnerTube API key (same key embedded in every YouTube page — not a private credential)
+const INNERTUBE_API_KEY = process.env.YOUTUBE_INNERTUBE_KEY || ''
+const INNERTUBE_API_URL = `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_API_KEY}`
 
 /**
  * Parse a YouTube video ID from various URL formats:
