@@ -1,13 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { processYouTube, parseYouTubeVideoId } from './youtube'
 
-// Mock youtube-transcript
-vi.mock('youtube-transcript', () => ({
-  YoutubeTranscript: {
-    fetchTranscript: vi.fn(),
-  },
-}))
-
 // Mock repo-extractor
 vi.mock('./repo-extractor', () => ({
   extractReposFromTranscript: vi.fn().mockResolvedValue({
@@ -16,8 +9,47 @@ vi.mock('./repo-extractor', () => ({
   }),
 }))
 
-import { YoutubeTranscript } from 'youtube-transcript'
 import { extractReposFromTranscript } from './repo-extractor'
+
+// Helper: mock InnerTube player response with caption tracks
+function mockPlayerResponse(captionXml: string | null) {
+  if (!captionXml) {
+    // No captions available
+    return {
+      ok: true,
+      json: () => Promise.resolve({
+        captions: null,
+        videoDetails: { title: 'Test Video' },
+      }),
+    }
+  }
+  return {
+    ok: true,
+    json: () => Promise.resolve({
+      captions: {
+        playerCaptionsTracklistRenderer: {
+          captionTracks: [
+            { languageCode: 'en', kind: 'asr', baseUrl: 'https://www.youtube.com/api/timedtext?v=test' },
+          ],
+        },
+      },
+      videoDetails: { title: 'Test Video' },
+    }),
+  }
+}
+
+// Helper: mock caption XML response
+function mockCaptionXml(xml: string) {
+  return { ok: true, text: () => Promise.resolve(xml) }
+}
+
+// Build srv3 XML from text segments
+function buildSrv3Xml(segments: string[]): string {
+  const paragraphs = segments.map((text, i) =>
+    `<p t="${i * 2000}" d="2000" w="1"><s ac="0">${text}</s></p>`
+  ).join('\n')
+  return `<?xml version="1.0" encoding="utf-8" ?><timedtext format="3"><body>${paragraphs}</body></timedtext>`
+}
 
 describe('parseYouTubeVideoId', () => {
   it('parses standard watch URLs', () => {
@@ -75,19 +107,21 @@ describe('processYouTube', () => {
   })
 
   it('processes YouTube video with transcript', async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({
-        title: 'Test Video Title',
-        author_name: 'Test Author',
-        author_url: 'https://www.youtube.com/@testauthor',
-      }),
-    })
-
-    vi.mocked(YoutubeTranscript.fetchTranscript).mockResolvedValueOnce([
-      { text: 'Hello everyone, today we look at', duration: 5, offset: 0, lang: 'en' },
-      { text: 'this amazing tool on github.com/user/repo', duration: 5, offset: 5, lang: 'en' },
+    const xml = buildSrv3Xml([
+      'Hello everyone, today we look at',
+      'this amazing tool on github.com/user/repo',
     ])
+
+    global.fetch = vi.fn()
+      // oEmbed metadata
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ title: 'Test Video Title', author_name: 'Test Author' }),
+      })
+      // InnerTube player
+      .mockResolvedValueOnce(mockPlayerResponse(xml))
+      // Caption XML
+      .mockResolvedValueOnce(mockCaptionXml(xml))
 
     const result = await processYouTube('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
 
@@ -99,17 +133,15 @@ describe('processYouTube', () => {
   })
 
   it('uses smart extraction when no GitHub URLs in transcript', async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({
-        title: 'Test Video',
-        author_name: 'Author',
-      }),
-    })
+    const xml = buildSrv3Xml(['This video talks about a cool tool'])
 
-    vi.mocked(YoutubeTranscript.fetchTranscript).mockResolvedValueOnce([
-      { text: 'This video talks about a cool tool', duration: 5, offset: 0, lang: 'en' },
-    ])
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ title: 'Test Video', author_name: 'Author' }),
+      })
+      .mockResolvedValueOnce(mockPlayerResponse(xml))
+      .mockResolvedValueOnce(mockCaptionXml(xml))
 
     const result = await processYouTube('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
 
@@ -119,17 +151,14 @@ describe('processYouTube', () => {
   })
 
   it('falls back to oEmbed title when transcript unavailable', async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({
-        title: 'Amazing AI Tool Review',
-        author_name: 'Tech Reviewer',
-      }),
-    })
-
-    vi.mocked(YoutubeTranscript.fetchTranscript).mockRejectedValueOnce(
-      new Error('Transcript is disabled')
-    )
+    global.fetch = vi.fn()
+      // oEmbed succeeds
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ title: 'Amazing AI Tool Review', author_name: 'Tech Reviewer' }),
+      })
+      // InnerTube returns no captions
+      .mockResolvedValueOnce(mockPlayerResponse(null))
 
     const result = await processYouTube('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
 
@@ -138,14 +167,15 @@ describe('processYouTube', () => {
   })
 
   it('handles youtu.be short URLs', async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ title: 'Short URL Video', author_name: 'Author' }),
-    })
+    const xml = buildSrv3Xml(['Content from short URL'])
 
-    vi.mocked(YoutubeTranscript.fetchTranscript).mockResolvedValueOnce([
-      { text: 'Content from short URL', duration: 5, offset: 0, lang: 'en' },
-    ])
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ title: 'Short URL Video', author_name: 'Author' }),
+      })
+      .mockResolvedValueOnce(mockPlayerResponse(xml))
+      .mockResolvedValueOnce(mockCaptionXml(xml))
 
     const result = await processYouTube('https://youtu.be/dQw4w9WgXcQ')
     expect(result).not.toBeNull()
@@ -158,14 +188,11 @@ describe('processYouTube', () => {
   })
 
   it('returns null when oEmbed fails and no transcript', async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-    })
-
-    vi.mocked(YoutubeTranscript.fetchTranscript).mockRejectedValueOnce(
-      new Error('Transcript is disabled')
-    )
+    global.fetch = vi.fn()
+      // oEmbed fails
+      .mockResolvedValueOnce({ ok: false, status: 404 })
+      // InnerTube returns no captions
+      .mockResolvedValueOnce(mockPlayerResponse(null))
 
     const result = await processYouTube('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
     expect(result).toBeNull()
@@ -173,21 +200,21 @@ describe('processYouTube', () => {
 
   it('handles network errors gracefully', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
-    vi.mocked(YoutubeTranscript.fetchTranscript).mockRejectedValueOnce(new Error('Network error'))
 
     const result = await processYouTube('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
     expect(result).toBeNull()
   })
 
   it('deduplicates extracted GitHub URLs', async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ title: 'Test', author_name: 'Author' }),
-    })
+    const xml = buildSrv3Xml(['Check github.com/user/repo and again github.com/user/repo here'])
 
-    vi.mocked(YoutubeTranscript.fetchTranscript).mockResolvedValueOnce([
-      { text: 'Check github.com/user/repo and again github.com/user/repo here', duration: 5, offset: 0, lang: 'en' },
-    ])
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ title: 'Test', author_name: 'Author' }),
+      })
+      .mockResolvedValueOnce(mockPlayerResponse(xml))
+      .mockResolvedValueOnce(mockCaptionXml(xml))
 
     const result = await processYouTube('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
 
@@ -196,14 +223,15 @@ describe('processYouTube', () => {
   })
 
   it('cleans trailing punctuation from GitHub URLs', async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ title: 'Test', author_name: 'Author' }),
-    })
+    const xml = buildSrv3Xml(['Go to github.com/user/repo, or check github.com/org/tool.'])
 
-    vi.mocked(YoutubeTranscript.fetchTranscript).mockResolvedValueOnce([
-      { text: 'Go to github.com/user/repo, or check github.com/org/tool.', duration: 5, offset: 0, lang: 'en' },
-    ])
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ title: 'Test', author_name: 'Author' }),
+      })
+      .mockResolvedValueOnce(mockPlayerResponse(xml))
+      .mockResolvedValueOnce(mockCaptionXml(xml))
 
     const result = await processYouTube('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
 
@@ -214,17 +242,15 @@ describe('processYouTube', () => {
   })
 
   it('includes oEmbed metadata in transcript', async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({
-        title: 'Video Title',
-        author_name: 'Channel Name',
-      }),
-    })
+    const xml = buildSrv3Xml(['Transcript text here'])
 
-    vi.mocked(YoutubeTranscript.fetchTranscript).mockResolvedValueOnce([
-      { text: 'Transcript text here', duration: 5, offset: 0, lang: 'en' },
-    ])
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ title: 'Video Title', author_name: 'Channel Name' }),
+      })
+      .mockResolvedValueOnce(mockPlayerResponse(xml))
+      .mockResolvedValueOnce(mockCaptionXml(xml))
 
     const result = await processYouTube('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
 

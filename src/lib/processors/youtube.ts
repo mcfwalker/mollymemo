@@ -1,6 +1,5 @@
 // YouTube processor - extracts transcripts and metadata from YouTube videos
 
-import { YoutubeTranscript } from 'youtube-transcript'
 import { extractReposFromTranscript } from './repo-extractor'
 
 interface YouTubeResult {
@@ -8,6 +7,8 @@ interface YouTubeResult {
   extractedUrls: string[]
   repoExtractionCost: number
 }
+
+const INNERTUBE_API_URL = 'https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8'
 
 /**
  * Parse a YouTube video ID from various URL formats:
@@ -68,14 +69,95 @@ async function fetchOEmbedMetadata(
 }
 
 /**
- * Fetch transcript captions via youtube-transcript package.
- * Returns joined text, or null if captions unavailable.
+ * Decode HTML entities in caption text.
+ */
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/<[^>]+>/g, '') // strip nested HTML tags
+}
+
+/**
+ * Fetch transcript via YouTube InnerTube API (ANDROID client).
+ * Returns joined caption text, or null if unavailable.
+ *
+ * Uses the ANDROID client because the WEB client often omits caption
+ * tracks. The response is srv3 XML with <p>/<s> tags.
  */
 async function fetchTranscript(videoId: string): Promise<string | null> {
   try {
-    const segments = await YoutubeTranscript.fetchTranscript(videoId)
-    if (!segments || segments.length === 0) return null
-    return segments.map((s) => s.text).join(' ')
+    // Step 1: Get caption tracks via InnerTube player endpoint
+    const playerRes = await fetch(INNERTUBE_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        context: {
+          client: {
+            clientName: 'ANDROID',
+            clientVersion: '19.09.37',
+            hl: 'en',
+            gl: 'US',
+          },
+        },
+        videoId,
+      }),
+    })
+
+    if (!playerRes.ok) return null
+
+    const playerData = await playerRes.json()
+    const captionTracks =
+      playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks
+
+    if (!captionTracks || captionTracks.length === 0) return null
+
+    // Prefer English track
+    const track =
+      captionTracks.find(
+        (t: { languageCode: string }) => t.languageCode === 'en'
+      ) || captionTracks[0]
+
+    // Step 2: Fetch caption XML
+    const xmlRes = await fetch(track.baseUrl)
+    if (!xmlRes.ok) return null
+
+    const xml = await xmlRes.text()
+    if (!xml) return null
+
+    // Step 3: Parse srv3 XML format (<p> paragraphs with <s> segments)
+    const paragraphs = [...xml.matchAll(/<p [^>]*>([\s\S]*?)<\/p>/g)]
+
+    if (paragraphs.length > 0) {
+      const texts = paragraphs
+        .map((p) => {
+          // Extract text from <s> segments within each <p>
+          const segments = [...p[1].matchAll(/<s[^>]*>([^<]*)<\/s>/g)]
+          if (segments.length > 0) {
+            return segments.map((s) => decodeEntities(s[1])).join('')
+          }
+          // Fallback: direct paragraph text
+          return decodeEntities(p[1])
+        })
+        .map((t) => t.trim())
+        .filter((t) => t)
+
+      if (texts.length > 0) return texts.join(' ')
+    }
+
+    // Fallback: try legacy <text> format
+    const textMatches = [...xml.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)]
+    if (textMatches.length > 0) {
+      const texts = textMatches
+        .map((m) => decodeEntities(m[1]).trim())
+        .filter((t) => t)
+      if (texts.length > 0) return texts.join(' ')
+    }
+
+    return null
   } catch {
     return null
   }
