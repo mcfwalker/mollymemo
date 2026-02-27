@@ -1,4 +1,4 @@
-const API_BASE = 'https://mollymemo.com'
+const API_BASE = 'https://www.mollymemo.com'
 
 chrome.action.onClicked.addListener(async (tab) => {
   // Skip unsupported pages
