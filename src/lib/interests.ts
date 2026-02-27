@@ -1,8 +1,6 @@
 // Interest extraction and management for the interest graph
 
-// OpenAI pricing for gpt-4o-mini
-const OPENAI_INPUT_PRICE = 0.15 / 1_000_000
-const OPENAI_OUTPUT_PRICE = 0.60 / 1_000_000
+import { chatCompletion, parseJsonResponse } from '@/lib/openai-client'
 
 export interface Interest {
   type: 'topic' | 'tool' | 'domain' | 'person' | 'repo'
@@ -26,12 +24,6 @@ export interface ItemInput {
  * Extract interests from an item using AI
  */
 export async function extractInterests(item: ItemInput): Promise<ExtractedInterests | null> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    console.error('OPENAI_API_KEY not configured')
-    return null
-  }
-
   const context = `
 Title: ${item.title || 'Unknown'}
 Summary: ${item.summary || 'None'}
@@ -52,41 +44,14 @@ Return ONLY valid JSON, no markdown. Keep values lowercase and hyphenated where 
 Example: {"topics": ["semantic-search"], "tools": ["pgvector"], "people": [], "repos": []}`
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.2,
-        max_tokens: 300,
-      }),
-    })
+    const completion = await chatCompletion(
+      [{ role: 'user', content: prompt }],
+      { maxTokens: 300 }
+    )
+    if (!completion) return null
 
-    if (!response.ok) {
-      const error = await response.text()
-      console.error(`OpenAI API error: ${response.status}`, error)
-      return null
-    }
-
-    const data = await response.json()
-    const text = data.choices?.[0]?.message?.content
-
-    if (!text) {
-      return null
-    }
-
-    // Calculate cost
-    const usage = data.usage || {}
-    const cost = (usage.prompt_tokens || 0) * OPENAI_INPUT_PRICE +
-                 (usage.completion_tokens || 0) * OPENAI_OUTPUT_PRICE
-
-    // Parse response - handle markdown-wrapped JSON
-    const jsonStr = text.replace(/```json\n?|\n?```/g, '').trim()
-    const parsed = JSON.parse(jsonStr)
+    const { cost } = completion
+    const parsed = parseJsonResponse(completion.text) as Record<string, string[]>
 
     // Convert to Interest array
     const interests: Interest[] = []

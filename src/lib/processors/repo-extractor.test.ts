@@ -17,7 +17,7 @@ describe('Repo Extractor', () => {
 
   beforeEach(() => {
     global.fetch = mockFetch
-    process.env = { ...originalEnv }
+    process.env = { ...originalEnv, OPENAI_API_KEY: 'test-key' }
     vi.clearAllMocks()
   })
 
@@ -40,7 +40,7 @@ describe('Repo Extractor', () => {
         }),
       })
 
-      const result = await extractCandidateNames('This video shows ink for terminal UIs', 'test-key')
+      const result = await extractCandidateNames('This video shows ink for terminal UIs')
 
       expect(result.candidates).toEqual([{ name: 'ink', context: 'React terminal CLI' }])
       expect(result.cost).toBeGreaterThan(0)
@@ -59,7 +59,7 @@ describe('Repo Extractor', () => {
         }),
       })
 
-      const result = await extractCandidateNames('Testing ink and zod', 'test-key')
+      const result = await extractCandidateNames('Testing ink and zod')
 
       expect(result.candidates).toEqual([
         { name: 'ink', context: '' },
@@ -80,7 +80,7 @@ describe('Repo Extractor', () => {
         }),
       })
 
-      const result = await extractCandidateNames('Using sharp for images', 'test-key')
+      const result = await extractCandidateNames('Using sharp for images')
 
       expect(result.candidates).toEqual([{ name: 'sharp', context: 'image processing' }])
     })
@@ -89,9 +89,10 @@ describe('Repo Extractor', () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 500,
+        text: () => Promise.resolve('error'),
       })
 
-      const result = await extractCandidateNames('Test transcript', 'test-key')
+      const result = await extractCandidateNames('Test transcript')
 
       expect(result.candidates).toEqual([])
       expect(result.cost).toBe(0)
@@ -100,7 +101,7 @@ describe('Repo Extractor', () => {
     it('should return empty on network error', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'))
 
-      const result = await extractCandidateNames('Test transcript', 'test-key')
+      const result = await extractCandidateNames('Test transcript')
 
       expect(result.candidates).toEqual([])
       expect(result.cost).toBe(0)
@@ -119,7 +120,7 @@ describe('Repo Extractor', () => {
         }),
       })
 
-      const result = await extractCandidateNames('Test transcript', 'test-key')
+      const result = await extractCandidateNames('Test transcript')
 
       expect(result.candidates).toEqual([])
     })
@@ -256,6 +257,7 @@ describe('Repo Extractor', () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 403,
+        text: () => Promise.resolve('error'),
       })
 
       const result = await searchGitHubRepoCandidates('test')
@@ -285,7 +287,7 @@ describe('Repo Extractor', () => {
     ]
 
     it('should return null for empty candidates', async () => {
-      const result = await selectBestRepo([], 'context', 'test-key')
+      const result = await selectBestRepo([], 'context')
 
       expect(result).toEqual({ repo: null, cost: 0 })
     })
@@ -299,7 +301,7 @@ describe('Repo Extractor', () => {
         }),
       })
 
-      const result = await selectBestRepo([mockCandidates[0]], 'React terminal UI', 'test-key')
+      const result = await selectBestRepo([mockCandidates[0]], 'React terminal UI')
 
       expect(result.repo).toEqual(mockCandidates[0])
     })
@@ -313,7 +315,7 @@ describe('Repo Extractor', () => {
         }),
       })
 
-      const result = await selectBestRepo(mockCandidates, 'React CLI library', 'test-key')
+      const result = await selectBestRepo(mockCandidates, 'React CLI library')
 
       expect(result.repo).toEqual(mockCandidates[0])
       expect(result.cost).toBeGreaterThan(0)
@@ -328,7 +330,7 @@ describe('Repo Extractor', () => {
         }),
       })
 
-      const result = await selectBestRepo(mockCandidates, 'Unrelated context', 'test-key')
+      const result = await selectBestRepo(mockCandidates, 'Unrelated context')
 
       expect(result.repo).toBeNull()
     })
@@ -337,9 +339,10 @@ describe('Repo Extractor', () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 500,
+        text: () => Promise.resolve('error'),
       })
 
-      const result = await selectBestRepo(mockCandidates, 'context', 'test-key')
+      const result = await selectBestRepo(mockCandidates, 'context')
 
       expect(result).toEqual({ repo: null, cost: 0 })
     })
@@ -367,8 +370,7 @@ describe('Repo Extractor', () => {
       const result = await validateRepoMatch(
         'This video shows ink for terminal UIs',
         'ink',
-        mockRepo,
-        'test-key'
+        mockRepo
       )
 
       expect(result.isMatch).toBe(true)
@@ -387,8 +389,7 @@ describe('Repo Extractor', () => {
       const result = await validateRepoMatch(
         'Unrelated transcript',
         'someother',
-        mockRepo,
-        'test-key'
+        mockRepo
       )
 
       expect(result.isMatch).toBe(false)
@@ -398,9 +399,10 @@ describe('Repo Extractor', () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 500,
+        text: () => Promise.resolve('error'),
       })
 
-      const result = await validateRepoMatch('transcript', 'name', mockRepo, 'test-key')
+      const result = await validateRepoMatch('transcript', 'name', mockRepo)
 
       expect(result).toEqual({ isMatch: false, cost: 0 })
     })

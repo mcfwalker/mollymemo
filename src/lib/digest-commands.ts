@@ -1,29 +1,18 @@
 // Parse natural language digest commands using GPT-4o-mini
 
+import { chatCompletion, parseJsonResponse } from '@/lib/openai-client'
+
 export interface DigestCommand {
   action: 'set_time' | 'enable' | 'disable' | 'query' | 'send_now' | 'unknown'
   time?: string // HH:MM format for set_time
 }
 
 export async function parseDigestCommand(message: string): Promise<DigestCommand> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    return { action: 'unknown' }
-  }
-
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'user',
-            content: `Parse this message as a digest settings command. The user is configuring when they receive their daily voice digest.
+    const completion = await chatCompletion(
+      [{
+        role: 'user',
+        content: `Parse this message as a digest settings command. The user is configuring when they receive their daily voice digest.
 
 Message: "${message}"
 
@@ -38,22 +27,12 @@ Determine the intent:
 If set_time, extract the time in 24-hour HH:MM format.
 
 Return JSON only: {"action": "...", "time": "HH:MM"} or {"action": "..."}`,
-          },
-        ],
-        temperature: 0,
-        max_tokens: 50,
-      }),
-    })
+      }],
+      { temperature: 0, maxTokens: 50 }
+    )
+    if (!completion) return { action: 'unknown' }
 
-    if (!response.ok) {
-      return { action: 'unknown' }
-    }
-
-    const data = await response.json()
-    const text = data.choices?.[0]?.message?.content || '{}'
-    const jsonStr = text.replace(/```json\n?|\n?```/g, '').trim()
-
-    return JSON.parse(jsonStr)
+    return parseJsonResponse(completion.text) as DigestCommand
   } catch {
     return { action: 'unknown' }
   }

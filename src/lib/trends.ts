@@ -160,18 +160,11 @@ export async function detectConvergence(
 
 // --- LLM Narration ---
 
-const OPENAI_INPUT_PRICE = 0.15 / 1_000_000
-const OPENAI_OUTPUT_PRICE = 0.60 / 1_000_000
+import { chatCompletion, parseJsonResponse } from '@/lib/openai-client'
 
 export async function narrateTrends(
   signals: TrendSignal[]
 ): Promise<NarrationResult | null> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    console.error('OPENAI_API_KEY not configured')
-    return null
-  }
-
   const signalDescriptions = signals.map((s) => {
     switch (s.type) {
       case 'velocity':
@@ -198,40 +191,14 @@ Return ONLY valid JSON, no markdown:
 {"trends": [{"trendType": "...", "title": "...", "description": "...", "strength": 0.8}]}`
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
-        max_tokens: 500,
-      }),
-    })
+    const completion = await chatCompletion(
+      [{ role: 'user', content: prompt }],
+      { temperature: 0.3 }
+    )
+    if (!completion) return null
 
-    if (!response.ok) {
-      const error = await response.text()
-      console.error(`OpenAI API error: ${response.status}`, error)
-      return null
-    }
-
-    const data = await response.json()
-    const text = data.choices?.[0]?.message?.content
-
-    if (!text) {
-      console.error('No response from OpenAI for trend narration')
-      return null
-    }
-
-    const usage = data.usage || {}
-    const cost = (usage.prompt_tokens || 0) * OPENAI_INPUT_PRICE +
-                 (usage.completion_tokens || 0) * OPENAI_OUTPUT_PRICE
-
-    const jsonStr = text.replace(/```json\n?|\n?```/g, '').trim()
-    const parsed = JSON.parse(jsonStr)
+    const { cost } = completion
+    const parsed = parseJsonResponse(completion.text) as Record<string, unknown[]>
 
     const trends: NarratedTrend[] = (parsed.trends || []).map((t: any, i: number) => ({
       trendType: t.trendType,

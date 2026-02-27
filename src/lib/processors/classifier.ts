@@ -1,6 +1,7 @@
 // AI classifier using OpenAI GPT-4o mini
 
 import { domains, defaultDomain, getDomainPromptList } from '../config/domains'
+import { chatCompletion, parseJsonResponse } from '../openai-client'
 
 interface ClassificationResult {
   title: string
@@ -10,10 +11,6 @@ interface ClassificationResult {
   tags: string[]
   cost: number
 }
-
-// GPT-4o-mini pricing (per 1M tokens)
-const OPENAI_INPUT_PRICE = 0.15
-const OPENAI_OUTPUT_PRICE = 0.60
 
 export async function classify(content: {
   sourceType: string
@@ -26,12 +23,6 @@ export async function classify(content: {
   }
   pageContent?: string
 }): Promise<ClassificationResult | null> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    console.error('OPENAI_API_KEY not configured')
-    return null
-  }
-
   // Guard: refuse to classify when there's no meaningful content
   const hasContent = content.transcript || content.githubMetadata || content.pageContent
   if (!hasContent) {
@@ -85,43 +76,11 @@ Return a JSON object with:
 Return ONLY valid JSON, no markdown or explanation.`
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.2,
-        max_tokens: 500,
-      }),
-    })
+    const completion = await chatCompletion([{ role: 'user', content: prompt }])
+    if (!completion) return null
 
-    if (!response.ok) {
-      const error = await response.text()
-      console.error(`OpenAI API error: ${response.status}`, error)
-      return null
-    }
-
-    const data = await response.json()
-    const text = data.choices?.[0]?.message?.content
-
-    if (!text) {
-      console.error('No response from OpenAI')
-      return null
-    }
-
-    // Calculate cost from usage
-    const usage = data.usage || {}
-    const inputTokens = usage.prompt_tokens || 0
-    const outputTokens = usage.completion_tokens || 0
-    const cost = (inputTokens * OPENAI_INPUT_PRICE + outputTokens * OPENAI_OUTPUT_PRICE) / 1_000_000
-
-    // Parse JSON (handle potential markdown code blocks)
-    const jsonStr = text.replace(/```json\n?|\n?```/g, '').trim()
-    const result = JSON.parse(jsonStr)
+    const { text, cost } = completion
+    const result = parseJsonResponse(text) as Record<string, unknown>
 
     // Validate domain against configured domains
     const validDomainSet = new Set([...Object.keys(domains), defaultDomain])
