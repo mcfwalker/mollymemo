@@ -52,9 +52,12 @@ function extractFromHtml(url: string, html: string): ArticleMetadata | null {
     return null
   }
 
+  // Clean extracted text: trim and collapse runs of 3+ newlines to 2
+  const content = article.textContent?.replace(/\n{3,}/g, '\n\n').trim() || null
+
   return {
     title: article.title ?? null,
-    content: article.textContent ?? null,
+    content,
     excerpt: article.excerpt ?? null,
     byline: article.byline ?? null,
     siteName: article.siteName ?? null,
