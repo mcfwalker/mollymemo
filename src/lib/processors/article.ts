@@ -17,11 +17,20 @@ function isPdfContentType(contentType: string | null): boolean {
 }
 
 /**
- * Rewrites arxiv PDF URLs to their HTML abstract page.
- * e.g. https://arxiv.org/pdf/2301.07041v2 → https://arxiv.org/abs/2301.07041v2
+ * Rewrites arxiv/alphaxiv URLs to the canonical arxiv.org HTML abstract page.
+ * - https://arxiv.org/pdf/2301.07041v2 → https://arxiv.org/abs/2301.07041v2
+ * - https://www.alphaxiv.org/abs/2602.11988 → https://arxiv.org/abs/2602.11988
  */
 export function tryRewriteArxivUrl(url: string): string | null {
   const parsed = new URL(url)
+
+  // alphaxiv.org is a discussion layer on top of arxiv — rewrite to arxiv.org
+  if (parsed.hostname.endsWith('alphaxiv.org')) {
+    const match = parsed.pathname.match(/^\/(abs|pdf)\/(.+?)(?:\.pdf)?$/)
+    if (!match) return null
+    return `https://arxiv.org/abs/${match[2]}`
+  }
+
   if (!parsed.hostname.endsWith('arxiv.org')) return null
 
   // Match /pdf/ID or /pdf/ID.pdf, with optional version suffix like v2
@@ -120,6 +129,21 @@ export async function processArticle(url: string): Promise<ArticleMetadata | nul
       // Generic PDF — extract text with pdf-parse
       const buffer = Buffer.from(await response.arrayBuffer())
       return await extractPdfText(buffer, url)
+    }
+
+    // For alphaxiv HTML pages, try the arxiv rewrite for better content
+    const absUrl = tryRewriteArxivUrl(url)
+    if (absUrl) {
+      const absResponse = await fetch(absUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; MollyMemo/0.1; +https://mollymemo.com)',
+          Accept: 'text/html,application/xhtml+xml',
+        },
+      })
+      if (absResponse.ok) {
+        const absHtml = await absResponse.text()
+        return extractFromHtml(absUrl, absHtml)
+      }
     }
 
     // Standard HTML path

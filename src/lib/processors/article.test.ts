@@ -216,6 +216,42 @@ describe('processArticle', () => {
     expect(result).toBeNull()
   })
 
+  it('rewrites alphaxiv.org HTML to arxiv.org for extraction', async () => {
+    const arxivHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head><title>Evaluating AGENTS.md - arxiv</title></head>
+        <body>
+          <article>
+            <h1>Evaluating AGENTS.md: Are Repository-Level Context Files Helpful for Coding Agents?</h1>
+            <p>We evaluate whether repository-level context files like AGENTS.md improve the performance of coding agents on real-world tasks.</p>
+            <p>Our findings show significant improvements in agent task completion when these files are present.</p>
+          </article>
+        </body>
+      </html>
+    `
+
+    const fetchSpy = vi.spyOn(global, 'fetch')
+    // First call: alphaxiv HTML page
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers({ 'content-type': 'text/html; charset=utf-8' }),
+      text: () => Promise.resolve('<html><body>alphaxiv page</body></html>'),
+    } as Response)
+    // Second call: rewritten to arxiv.org abs page
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      text: () => Promise.resolve(arxivHtml),
+    } as Response)
+
+    const result = await processArticle('https://www.alphaxiv.org/abs/2602.11988')
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+    expect(fetchSpy.mock.calls[1][0]).toBe('https://arxiv.org/abs/2602.11988')
+    expect(result).not.toBeNull()
+    expect(result?.content).toContain('repository-level context files')
+  })
+
   it('uses HTML/Readability path when Content-Type is not PDF', async () => {
     const mockHtml = `
       <!DOCTYPE html>
@@ -269,5 +305,23 @@ describe('tryRewriteArxivUrl', () => {
 
   it('returns null for non-PDF arxiv paths', () => {
     expect(tryRewriteArxivUrl('https://arxiv.org/abs/2301.07041')).toBeNull()
+  })
+
+  it('rewrites alphaxiv.org /abs/ to arxiv.org /abs/', () => {
+    expect(tryRewriteArxivUrl('https://www.alphaxiv.org/abs/2602.11988')).toBe(
+      'https://arxiv.org/abs/2602.11988'
+    )
+  })
+
+  it('rewrites alphaxiv.org /pdf/ to arxiv.org /abs/', () => {
+    expect(tryRewriteArxivUrl('https://alphaxiv.org/pdf/2602.11988')).toBe(
+      'https://arxiv.org/abs/2602.11988'
+    )
+  })
+
+  it('rewrites alphaxiv.org with .pdf suffix', () => {
+    expect(tryRewriteArxivUrl('https://alphaxiv.org/pdf/2602.11988.pdf')).toBe(
+      'https://arxiv.org/abs/2602.11988'
+    )
   })
 })

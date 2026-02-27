@@ -16,6 +16,60 @@ describe('classifier', () => {
     vi.restoreAllMocks()
   })
 
+  it('returns null when no content is provided (prevents hallucination)', async () => {
+    const result = await classify({
+      sourceType: 'article',
+    })
+
+    expect(result).toBeNull()
+    expect(console.error).toHaveBeenCalledWith(
+      'Classifier skipped: no transcript, metadata, or page content provided'
+    )
+  })
+
+  it('returns null when only sourceUrl is provided without content', async () => {
+    const result = await classify({
+      sourceType: 'article',
+      sourceUrl: 'https://example.com/article',
+    })
+
+    expect(result).toBeNull()
+  })
+
+  it('includes sourceUrl in prompt when provided', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  title: 'Test',
+                  summary: 'Test',
+                  domain: 'vibe-coding',
+                  content_type: 'resource',
+                  tags: ['test'],
+                }),
+              },
+            },
+          ],
+          usage: { prompt_tokens: 100, completion_tokens: 50 },
+        }),
+    })
+
+    await classify({
+      sourceType: 'article',
+      sourceUrl: 'https://example.com/paper',
+      transcript: 'Some article content here',
+    })
+
+    const callBody = JSON.parse(
+      (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body
+    )
+    expect(callBody.messages[0].content).toContain('https://example.com/paper')
+  })
+
   it('returns null when OPENAI_API_KEY is not set', async () => {
     delete process.env.OPENAI_API_KEY
 

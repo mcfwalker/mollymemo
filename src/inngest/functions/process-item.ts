@@ -287,6 +287,7 @@ export const processItem = inngest.createFunction(
     const classification = await step.run("classify", async () => {
       const result = await classify({
         sourceType,
+        sourceUrl: item.source_url,
         transcript: normalExtracted.transcript,
         githubMetadata: normalExtracted.githubMetadata || undefined,
       });

@@ -17,6 +17,7 @@ const OPENAI_OUTPUT_PRICE = 0.60
 
 export async function classify(content: {
   sourceType: string
+  sourceUrl?: string
   transcript?: string
   githubMetadata?: {
     name: string
@@ -31,8 +32,21 @@ export async function classify(content: {
     return null
   }
 
+  // Guard: refuse to classify when there's no meaningful content
+  const hasContent = content.transcript || content.githubMetadata || content.pageContent
+  if (!hasContent) {
+    console.error('Classifier skipped: no transcript, metadata, or page content provided')
+    return null
+  }
+
   // Build context for the AI
-  let context = `Source type: ${content.sourceType}\n\n`
+  let context = `Source type: ${content.sourceType}\n`
+
+  if (content.sourceUrl) {
+    context += `Source URL: ${content.sourceUrl}\n`
+  }
+
+  context += '\n'
 
   if (content.transcript) {
     context += `Transcript:\n${content.transcript.slice(0, 3000)}\n\n`
