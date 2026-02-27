@@ -70,7 +70,12 @@ export function ItemCard({ item, isExpanded, onToggleExpand, onUpdate, onDelete,
   return (
     <div
       className={`${styles.card} ${isExpanded ? styles.expanded : ''}`}
-      onClick={onToggleExpand}
+      onClick={() => {
+        // Don't collapse when user is selecting text to copy
+        const selection = window.getSelection()
+        if (selection && selection.toString().length > 0) return
+        onToggleExpand()
+      }}
     >
       <div className={styles.cardHeader}>
         <div className={styles.cardTitle}>

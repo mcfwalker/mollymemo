@@ -207,6 +207,7 @@
   color: var(--text-muted);
   margin-top: 12px;
   line-height: 1.5;
+  white-space: pre-wrap;
 }
 
 .cardDetails {
