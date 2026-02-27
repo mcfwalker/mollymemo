@@ -5,7 +5,7 @@ import { detectSourceType } from '@/lib/processors/detect'
 import { inngest } from '@/inngest/client'
 
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': process.env.NEXT_PUBLIC_APP_URL || 'https://mollymemo.com',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }

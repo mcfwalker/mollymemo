@@ -143,10 +143,8 @@ describe('telegram webhook route', () => {
       expect(response.status).toBe(401)
     })
 
-    it('allows requests when no secret is configured (backward compat)', async () => {
+    it('rejects requests when no secret is configured (fail-closed)', async () => {
       delete process.env.TELEGRAM_WEBHOOK_SECRET
-      vi.mocked(getUserByTelegramId).mockResolvedValue(TEST_USER)
-      vi.mocked(extractUrl).mockReturnValue(null)
 
       const request = new NextRequest('http://localhost/api/telegram', {
         method: 'POST',
@@ -154,7 +152,7 @@ describe('telegram webhook route', () => {
       })
 
       const response = await POST(request)
-      expect(response.status).toBe(200)
+      expect(response.status).toBe(401)
     })
   })
 

@@ -118,12 +118,8 @@ async function handleDigestCommand(
 function verifyTelegramSecret(request: NextRequest): boolean {
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET
   if (!secret) {
-    // If no secret configured, allow requests (backward compatibility)
-    // Log warning in production
-    if (process.env.NODE_ENV === 'production') {
-      console.warn('TELEGRAM_WEBHOOK_SECRET not configured - webhook is unprotected')
-    }
-    return true
+    console.error('TELEGRAM_WEBHOOK_SECRET not configured — rejecting request')
+    return false
   }
 
   const headerSecret = request.headers.get('x-telegram-bot-api-secret-token')

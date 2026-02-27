@@ -34,21 +34,10 @@ export async function GET(request: NextRequest) {
   const isTest = searchParams.get('test') === 'true'
   const testUserId = searchParams.get('user_id')
 
-  // Verify authorization
-  // In production, Vercel cron sends Authorization header
-  // Test mode is only allowed in development
-  if (isTest && process.env.NODE_ENV === 'production') {
-    return NextResponse.json(
-      { error: 'Test mode disabled in production' },
-      { status: 403 }
-    )
-  }
-
-  if (!isTest) {
-    const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  // Verify authorization — always require CRON_SECRET
+  const authHeader = request.headers.get('authorization')
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
