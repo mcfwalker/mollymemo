@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 
 // Routes that don't require auth
-const PUBLIC_ROUTES = ['/login', '/api/auth', '/api/auth/callback', '/api/telegram', '/api/cron', '/api/inngest']
+const PUBLIC_ROUTES = ['/login', '/api/auth', '/api/auth/callback', '/api/telegram', '/api/cron', '/api/inngest', '/api/capture']
 
 // Routes that require admin access
 const ADMIN_ROUTES = ['/admin', '/api/admin']
