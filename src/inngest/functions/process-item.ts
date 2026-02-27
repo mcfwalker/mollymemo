@@ -3,6 +3,7 @@ import { createServiceClient, Item } from "@/lib/supabase";
 import { processGitHub } from "@/lib/processors/github";
 import { processTikTok } from "@/lib/processors/tiktok";
 import { processX } from "@/lib/processors/x";
+import { processYouTube } from "@/lib/processors/youtube";
 import {
   extractReposFromTranscript,
   extractReposFromSummary,
@@ -213,6 +214,24 @@ export const processItem = inngest.createFunction(
                   if (!githubMetadata) githubMetadata = gh;
                 }
               }
+            }
+          }
+        } else if (sourceType === "youtube") {
+          const result = await processYouTube(item.source_url);
+          if (!result || !result.transcript) {
+            throw new Error(
+              "YouTube processing failed - no transcript returned"
+            );
+          }
+          transcript = result.transcript;
+          repoExtractionCost += result.repoExtractionCost;
+
+          // Process GitHub URLs found in transcript
+          for (const url of result.extractedUrls.slice(0, 3)) {
+            const gh = await processGitHub(url);
+            if (gh) {
+              extractedEntities.repos?.push(url);
+              if (!githubMetadata) githubMetadata = gh;
             }
           }
         } else if (sourceType === "article") {
