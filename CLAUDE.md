@@ -1,38 +1,38 @@
-# MollyMemo
+# MollyMemo — DEPRECATED
 
-Personal knowledge capture system. Share links from phone → auto-extract intelligence → query via Claude Code.
+> **Status: end-of-life as of 2026-04-29.**
+> Telegram capture has been rerouted to Sidespace's `capture-item` Supabase
+> edge function (SSV-272). All Inngest crons (item processing, trend detection,
+> reports, merge, discover) are deregistered. The Vercel deployment lingers
+> only as a 30-day 307 redirect for `/api/telegram` and will be fully torn down
+> on **2026-05-29** (SSV-275).
+>
+> **Do not add new features to this repo.** New capture / processing work
+> belongs in `~/Development/mcfw/sidespace-v2/supabase/functions/`.
 
-## Status
+## What replaces what
 
-**v0.1** — In development
+| MollyMemo (retiring) | Sidespace (live) |
+|---|---|
+| `src/app/api/telegram/route.ts` | `supabase/functions/capture-item/index.ts` |
+| `src/inngest/functions/process-item.ts` | `supabase/functions/process-item/index.ts` |
+| `src/inngest/functions/discover.ts` | (not ported — superseded by F#29 memory cognition) |
+| `src/inngest/functions/detect-trends.ts` | (not ported — superseded by F#29) |
+| `src/inngest/functions/generate-report.ts` | (not ported — superseded by Uplink / digests) |
+| `src/inngest/functions/merge-containers.ts` | (not ported — concept retired) |
+| Chrome extension `extension/` | (not ported — Telegram is the canonical capture surface) |
 
-**Production:** https://mollymemo.com
+## Decommission checklist (SSV-275)
 
-## Stack
+- [x] 307 redirect on `/api/telegram` → `capture-item`
+- [x] Inngest function registry emptied (crons deregister on next deploy)
+- [x] CLAUDE.md marked DEPRECATED
+- [ ] Final deploy (push triggers Vercel)
+- [ ] Inngest dashboard: confirm crons disappear after deploy
+- [ ] 2026-05-29: delete Vercel project, decide on `mollymemo.com` domain
 
-- **Frontend/API:** Next.js on Vercel
-- **Database:** Supabase (Postgres)
-- **AI:** OpenAI GPT-4o Mini (transcription, classification)
-- **Jobs:** Inngest (resilient background processing)
+## Historical reference
 
-## Design Docs
-
-- [v0.1 Design](docs/plans/2026-01-25-lazylist-v0.1-design.md)
-
-## Commands
-
-```bash
-npm run dev      # Local development
-npm run build    # Production build
-```
-
-## Key Files
-
-- `src/app/api/telegram/route.ts` — Telegram bot webhook (primary capture method)
-- `src/app/api/capture/route.ts` — REST API capture endpoint (deprecated - use Telegram)
-- `src/lib/processors/` — Source-specific extraction (TikTok, GitHub, article)
-- `src/lib/classifier.ts` — AI categorization
-
-## Environment Variables
-
-See `.env.example` for required variables.
+Original v0.1 design lives at `docs/plans/2026-01-25-lazylist-v0.1-design.md`.
+Recent session logs in `docs/sessions/` document the build-out and the SSV-272
+cutover.
